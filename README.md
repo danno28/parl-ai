@@ -14,7 +14,7 @@ npm run db:migrate           # creates the local database in .data/
 npm run dev                  # http://localhost:3000
 ```
 
-**Signing in locally:** open the app, enter an invited email, and copy the login link from the terminal where `npm run dev` runs (with `EMAIL_PROVIDER=console`, emails are printed there instead of sent).
+**Signing in locally:** open the app and enter an invited email. With `npm run dev` and `EMAIL_PROVIDER=console` (no email service), the page then shows a **Jetzt anmelden** button with the login link; the link is also printed in the server log. This shortcut never exists in a production build or once real emails are sent. Sessions last 60 days, so you rarely need to sign in again.
 
 **What needs which key:**
 - Nothing extra: login, home page, and `/demo` with the browser's voice and a simulated score.

@@ -64,6 +64,10 @@ export const de = {
     failed: "Das hat nicht geklappt. Bitte nochmal versuchen.",
     linkExpired: "Der Link ist abgelaufen oder wurde schon benutzt. Fordere einfach einen neuen an.",
     signOut: "Abmelden",
+    devTitle: "Bienvenue.",
+    devBody:
+      "Lokaler Entwicklungsmodus ohne E-Mail-Versand: Dein Anmeldelink steht hier statt in deinem Postfach.",
+    devSignIn: "Jetzt anmelden",
   },
 } as const;
 

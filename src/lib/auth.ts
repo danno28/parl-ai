@@ -7,6 +7,7 @@ import { magicLink } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { magicLinkEmail, sendEmail } from "@/lib/email";
+import { rememberLoginLink } from "@/lib/dev-login";
 
 /**
  * Login by email magic link (U-1), invite-only (U-6).
@@ -48,6 +49,8 @@ const notInvited = () =>
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema, usePlural: true }),
   advanced: { database: { generateId: "uuid" } },
+  // Stay signed in: a session lasts 60 days and is extended once a day while you use the app.
+  session: { expiresIn: 60 * 60 * 24 * 60, updateAge: 60 * 60 * 24 },
   databaseHooks: {
     user: {
       create: {
@@ -65,6 +68,8 @@ export const auth = betterAuth({
       sendMagicLink: async ({ email, url }) => {
         if (!(await hasAccount(email)) && !(await isInvited(email))) throw notInvited();
         await sendEmail(magicLinkEmail(email, url));
+        rememberLoginLink(email, url); // no-op unless local dev without an email service
+
       },
     }),
     // Must stay last: lets server actions set the session cookie.

@@ -8,7 +8,7 @@ import { t } from "@/i18n";
 type State =
   | { step: "form"; error?: string }
   | { step: "sending" }
-  | { step: "sent"; email: string };
+  | { step: "sent"; email: string; devLink?: string };
 
 /** Only allow redirects to paths inside this app. */
 function safeNext(next: string | null): string {
@@ -31,11 +31,32 @@ export function LoginForm() {
       callbackURL,
       errorCallbackURL: "/login",
     });
-    if (!error) return setState({ step: "sent", email: email.trim() });
+    if (!error) {
+      // Local development without an email service: the server hands the link over directly.
+      const dev = await fetch(`/api/dev/login-link?email=${encodeURIComponent(email.trim())}`)
+        .then((r) => (r.ok ? (r.json() as Promise<{ url: string }>) : null))
+        .catch(() => null);
+      return setState({ step: "sent", email: email.trim(), devLink: dev?.url });
+    }
     setState({
       step: "form",
       error: error.status === 403 ? t("login.notInvited") : t("login.failed"),
     });
+  }
+
+  if (state.step === "sent" && state.devLink) {
+    return (
+      <div className="mt-10 grid gap-5">
+        <h1 className="text-[clamp(2.25rem,6vw,4rem)] leading-[1.05] italic">{t("login.devTitle")}</h1>
+        <p className="font-sans text-sm text-muted-foreground">{t("login.devBody")}</p>
+        <a
+          href={state.devLink}
+          className="justify-self-start rounded-full bg-foreground px-6 py-3 font-sans text-sm font-medium text-background transition-opacity hover:opacity-90"
+        >
+          {t("login.devSignIn")}
+        </a>
+      </div>
+    );
   }
 
   if (state.step === "sent") {
