@@ -1,0 +1,470 @@
+<title>French App Design Preview</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one long column of full-width "scenes", each one app screen, mostly empty space.
+   The conversation scenes centre on a graphite-dust speaker that moves when she talks.
+   Palette: paper, ink, two greys, one red used only for "live" (mic) and error marks.
+   Type: Bodoni Moda (a Didone, the French typographic tradition) for everything you read; Inter only for tiny labels. */
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --ink: #111111;
+  --muted: #6b6b6b;
+  --faint: #a8a8a8;
+  --line: #e4e4e4;
+  --accent: #cf2e2e;
+  --accent-soft: rgba(207, 46, 46, 0.10);
+  --serif: "Bodoni Moda", "Didot", "Bodoni 72", Georgia, serif;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --w: 400; /* regular serif weight */
+}
+/* Light (black on white) is the default, even when the device is in dark mode.
+   Dark is opt-in: a dark grey, not black, with softer white text and a heavier serif,
+   so the thin strokes of the Didone don't disappear. */
+:root[data-theme="dark"] {
+  --bg: #1f1f1f; --surface: #272727; --ink: #e9e7e3; --muted: #a8a8a8; --faint: #727272; --line: #363636;
+  --accent: #ff6f63; --accent-soft: rgba(255, 111, 99, 0.16);
+  --w: 500;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--serif); font-optical-sizing: auto; font-weight: var(--w); font-size: 18px; line-height: 1.5; -webkit-font-smoothing: antialiased; transition: background-color .3s, color .3s; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, p { margin: 0; }
+h1, h2 { font-weight: var(--w); text-wrap: balance; letter-spacing: -0.01em; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 1.5px solid var(--ink); outline-offset: 4px; }
+.label { font-family: var(--sans); font-size: 11.5px; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.de { font-family: var(--sans); font-size: 14px; color: var(--muted); letter-spacing: 0; }
+.link { font-family: var(--sans); font-size: 13px; font-weight: 500; color: var(--ink); border-bottom: 1px solid var(--line); padding-bottom: 2px; transition: border-color .2s; }
+.link:hover { border-color: var(--ink); }
+.link.quiet { color: var(--muted); }
+.links { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Nav */
+nav.top .wrap { display: flex; align-items: center; gap: 24px; padding-block: 22px; font-family: var(--sans); font-size: 13.5px; font-weight: 500; }
+nav.top .mark { font-family: var(--serif); font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+nav.top .sp { flex: 1; }
+nav.top a, nav.top button { color: var(--ink); text-decoration: none; font-family: var(--sans); font-size: 13.5px; font-weight: 500; }
+nav.top .lvl { border: 1px solid var(--ink); border-radius: 99px; padding: 1px 9px; font-size: 12px; }
+.proto { font-family: var(--sans); font-size: 12px; color: var(--muted); text-align: center; padding-block: 0 8px; }
+
+/* Scenes */
+.scene { border-top: 1px solid var(--line); }
+.scene > .wrap { padding-block: clamp(56px, 9vw, 112px); }
+.scene-head { display: flex; justify-content: space-between; gap: 16px; margin-bottom: clamp(36px, 6vw, 64px); }
+
+/* 1 Choose */
+.ask { font-size: clamp(40px, 7.4vw, 92px); line-height: 1.02; font-style: italic; }
+.ask-de { margin-top: 14px; }
+.scenes { margin-top: clamp(36px, 6vw, 64px); display: grid; }
+.scen { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 6px 24px; padding-block: 16px; border-bottom: 1px solid var(--line); text-align: left; width: 100%; }
+.scen:first-child { border-top: 1px solid var(--line); }
+.scen .fr { font-size: clamp(24px, 3.4vw, 36px); line-height: 1.15; transition: transform .35s cubic-bezier(.2,.7,.2,1); }
+.scen .go { font-family: var(--sans); font-size: 13px; font-weight: 500; opacity: 0; transform: translateX(-6px); transition: opacity .25s, transform .25s; }
+.scen:hover .fr, .scen[aria-pressed="true"] .fr { transform: translateX(10px); }
+.scen:hover .go, .scen[aria-pressed="true"] .go { opacity: 1; transform: none; }
+.scen .de { grid-column: 1; }
+.own { margin-top: 28px; display: grid; gap: 18px; }
+.own input { width: 100%; font-family: var(--serif); font-size: 22px; font-style: italic; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--ink); padding: 8px 0; border-radius: 0; }
+.own input::placeholder { color: var(--faint); }
+.own input:focus { outline: none; border-bottom-width: 2px; }
+
+/* 2 Grammar */
+.rule { font-size: clamp(36px, 6.4vw, 80px); line-height: 1.05; }
+.rule u { text-decoration: none; font-style: italic; font-weight: 600; border-bottom: 2px solid var(--ink); }
+.explain { margin-top: 22px; max-width: 46ch; font-size: 19px; color: var(--muted); }
+.explain i { color: var(--ink); }
+.forms { margin-top: clamp(36px, 6vw, 56px); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; border-top: 1px solid var(--line); padding-top: 24px; }
+.forms div { display: grid; gap: 4px; }
+.forms b { font-size: 34px; font-weight: 500; font-style: italic; line-height: 1.1; }
+.forms span.fr { font-size: 17px; }
+.exo { margin-top: clamp(40px, 6vw, 64px); display: grid; gap: 14px; }
+.exo .q { font-size: clamp(24px, 3.4vw, 34px); display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.exo input { width: 4.6em; font-family: var(--serif); font-size: inherit; font-style: italic; text-align: center; color: var(--ink); background: transparent; border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; padding: 0 4px; }
+.exo input:focus { outline: none; border-bottom-width: 2px; }
+.exo input.ok { border-color: var(--ink); }
+.exo input.no { border-color: var(--accent); color: var(--accent); }
+.verdict { font-family: var(--sans); font-size: 14px; color: var(--muted); min-height: 1.5em; }
+.verdict b { color: var(--ink); font-weight: 600; }
+
+/* 3 Vocabulary */
+.vocab { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(24px, 6vw, 80px); }
+.voc { display: grid; gap: 2px; padding-block: 18px; border-bottom: 1px solid var(--line); text-align: left; }
+.voc .fr { font-size: clamp(24px, 3vw, 32px); line-height: 1.15; display: flex; align-items: baseline; gap: 10px; }
+.voc .art { color: var(--faint); }
+.voc .g { font-family: var(--sans); font-size: 11px; color: var(--faint); }
+.voc .spk { margin-left: auto; color: var(--faint); opacity: 0; transition: opacity .2s; }
+.voc:hover .spk, .voc:focus-visible .spk { opacity: 1; }
+.voc.say .fr { font-style: italic; }
+.vocab-foot { margin-top: 28px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; }
+
+/* 4–5 Conversation */
+.talk { max-width: 820px; margin: 0 auto; text-align: center; display: grid; justify-items: center; }
+.progress { width: 100%; height: 1px; background: var(--line); position: relative; margin-bottom: 14px; }
+.progress i { position: absolute; inset: 0 auto 0 0; background: var(--ink); }
+.talk .meta { width: 100%; display: flex; justify-content: space-between; }
+.orb { width: min(340px, 80vw); aspect-ratio: 1; max-width: 100%; margin-top: 18px; cursor: pointer; display: block; }
+.who { margin-top: 4px; }
+.line { margin-top: 26px; font-size: clamp(30px, 4.8vw, 54px); line-height: 1.12; }
+.trans { margin-top: 12px; min-height: 1.5em; }
+.line-tools { margin-top: 18px; justify-content: center; }
+.you { margin-top: clamp(48px, 7vw, 72px); width: 100%; display: grid; gap: 12px; justify-items: center; }
+.you .target { font-size: clamp(22px, 3.2vw, 32px); font-style: italic; line-height: 1.25; max-width: 30ch; }
+.miss { text-decoration: underline; text-decoration-color: var(--accent); text-decoration-thickness: 2px; text-underline-offset: 7px; }
+.cue { font-size: clamp(22px, 3.2vw, 30px); line-height: 1.3; font-family: var(--sans); font-weight: 400; letter-spacing: -0.01em; max-width: 26ch; }
+.hint-row { display: flex; gap: 14px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.dots { display: inline-flex; gap: 5px; }
+.dots i { width: 6px; height: 6px; border-radius: 50%; border: 1px solid var(--ink); }
+.dots i.on { background: var(--ink); }
+.hints { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: center; min-height: 1.6em; }
+.hints span { font-style: italic; font-size: 21px; color: var(--muted); animation: rise .45s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+
+.mic-wrap { margin-top: 30px; display: grid; justify-items: center; gap: 12px; }
+.mic { width: 76px; height: 76px; border-radius: 50%; background: var(--ink); color: var(--bg); display: grid; place-items: center; position: relative; transition: background-color .2s, transform .2s; }
+.mic:hover { transform: scale(1.04); }
+.mic.rec { background: var(--accent); color: #fff; }
+.mic.rec::after { content: ""; position: absolute; inset: -1px; border-radius: 50%; border: 1px solid var(--accent); animation: ring 1.5s ease-out infinite; }
+@keyframes ring { to { inset: -18px; opacity: 0; } }
+.mic svg.i { width: 26px; height: 26px; stroke-width: 1.7; }
+.mic-state { font-family: var(--sans); font-size: 13px; color: var(--muted); }
+
+.result { margin-top: 30px; width: 100%; max-width: 560px; display: grid; gap: 10px; justify-items: center; animation: rise .5s ease both; }
+.result[hidden] { display: none; }
+.score { font-size: 64px; line-height: 1; font-weight: var(--w); font-variant-numeric: tabular-nums lining-nums; }
+.score small { font-family: var(--sans); font-size: 13px; color: var(--muted); margin-left: 4px; }
+.tip { font-size: 19px; color: var(--muted); max-width: 44ch; }
+.tip i { color: var(--ink); }
+.said { font-size: 22px; font-style: italic; }
+.script { font-family: var(--sans); font-size: 13px; color: var(--muted); }
+.script em { font-family: var(--serif); font-size: 16px; }
+.next { margin-top: 10px; }
+
+/* Under the hood */
+.hood-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 32px; }
+.sw { display: grid; gap: 10px; }
+.chipline { display: flex; gap: 8px; }
+.chip { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); }
+.spec { font-size: 54px; line-height: 1; }
+.spec-sans { font-family: var(--sans); font-size: 40px; font-weight: 500; line-height: 1; }
+.hood p.de { max-width: 52ch; line-height: 1.6; }
+footer .wrap { padding-block: 24px 64px; }
+
+@media (max-width: 720px) {
+  nav.top .hide-s { display: none; }
+  .forms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vocab { grid-template-columns: 1fr; }
+  .scen { grid-template-columns: minmax(0, 1fr); }
+  .scen .go { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5"/></symbol>
+  <symbol id="i-spk" viewBox="0 0 24 24"><path d="M4 10v4h4l5 4V6L8 10H4zM16.5 9a4 4 0 0 1 0 6"/></symbol>
+</svg>
+
+<nav class="top"><div class="wrap">
+  <span class="mark">français</span>
+  <span class="sp"></span>
+  <a href="#choisir" class="hide-s">Lektionen</a>
+  <a href="#coulisses" class="hide-s">Design</a>
+  <span class="lvl">A2</span>
+  <button type="button" id="mode">Dunkel</button>
+</div></nav>
+<p class="proto wrap">Design proposal 2 · clickable prototype with example content</p>
+
+<!-- 1 Choose -->
+<section class="scene" id="choisir"><div class="wrap">
+  <div class="scene-head"><span class="label">Szene wählen</span><span class="label">A2</span></div>
+  <h1 class="ask">Où allons-nous aujourd'hui&nbsp;?</h1>
+  <p class="de ask-de">Wohin geht's heute?</p>
+  <div class="scenes" id="scenes">
+    <button type="button" class="scen" aria-pressed="true"><span class="fr">À la boulangerie</span><span class="go">Beginnen →</span><span class="de">In der Bäckerei</span></button>
+    <button type="button" class="scen" aria-pressed="false"><span class="fr">Chez le dentiste</span><span class="go">Beginnen →</span><span class="de">Beim Zahnarzt</span></button>
+    <button type="button" class="scen" aria-pressed="false"><span class="fr">Au guichet de la gare</span><span class="go">Beginnen →</span><span class="de">Am Bahnhofsschalter</span></button>
+    <button type="button" class="scen" aria-pressed="false"><span class="fr">La visite d'un appartement</span><span class="go">Beginnen →</span><span class="de">Wohnungsbesichtigung</span></button>
+  </div>
+  <div class="own">
+    <input id="own" type="text" placeholder="Oder eigene Szene beschreiben …" aria-label="Eigene Szene">
+    <div class="links"><button type="button" class="link quiet">Andere Vorschläge</button><button type="button" class="link quiet">Vokabelliste hochladen</button><span class="de">Grammatik: <i style="font-family:var(--serif);color:var(--ink)">du, de la, des</i></span><button type="button" class="link quiet">ändern</button></div>
+  </div>
+</div></section>
+
+<!-- 2 Grammar -->
+<section class="scene"><div class="wrap">
+  <div class="scene-head"><span class="label">Grammatik · optional</span><button type="button" class="link quiet">Überspringen</button></div>
+  <h2 class="rule">Je voudrais <u>du</u> pain.</h2>
+  <p class="explain">Bei unbestimmten Mengen braucht das Französische einen Artikel, das Deutsche nicht: <i>Ich möchte Brot.</i></p>
+  <div class="forms">
+    <div><b>du</b><span class="label">maskulin</span><span class="fr">du fromage</span></div>
+    <div><b>de la</b><span class="label">feminin</span><span class="fr">de la confiture</span></div>
+    <div><b>de l'</b><span class="label">vor Vokal</span><span class="fr">de l'eau</span></div>
+    <div><b>des</b><span class="label">Plural</span><span class="fr">des croissants</span></div>
+  </div>
+  <div class="exo">
+    <span class="label">Übung 1 von 4</span>
+    <form class="q" id="exo-form"><span>Elle achète</span><input id="exo" type="text" autocomplete="off" aria-label="Lücke ausfüllen" placeholder="···"><span>confiture.</span></form>
+    <p class="verdict" id="verdict">Eingeben und Enter drücken.</p>
+  </div>
+</div></section>
+
+<!-- 3 Vocabulary -->
+<section class="scene"><div class="wrap">
+  <div class="scene-head"><span class="label">Vokabeln · 12</span><span class="label">Antippen zum Anhören</span></div>
+  <div class="vocab">
+    <button type="button" class="voc" data-say="la baguette"><span class="fr"><span><span class="art">la</span> baguette</span><svg class="i spk"><use href="#i-spk"/></svg></span><span class="de">das Baguette</span></button>
+    <button type="button" class="voc" data-say="le pain complet"><span class="fr"><span><span class="art">le</span> pain complet</span><svg class="i spk"><use href="#i-spk"/></svg></span><span class="de">das Vollkornbrot</span></button>
+    <button type="button" class="voc" data-say="l'addition"><span class="fr"><span><span class="art">l'</span>addition <span class="g">f</span></span><svg class="i spk"><use href="#i-spk"/></svg></span><span class="de">die Rechnung</span></button>
+    <button type="button" class="voc" data-say="la monnaie"><span class="fr"><span><span class="art">la</span> monnaie</span><svg class="i spk"><use href="#i-spk"/></svg></span><span class="de">das Wechselgeld</span></button>
+    <button type="button" class="voc" data-say="je voudrais"><span class="fr"><span>je voudrais …</span><svg class="i spk"><use href="#i-spk"/></svg></span><span class="de">ich hätte gern …</span></button>
+    <button type="button" class="voc" data-say="avec ceci ?"><span class="fr"><span>avec ceci&nbsp;?</span><svg class="i spk"><use href="#i-spk"/></svg></span><span class="de">sonst noch etwas?</span></button>
+  </div>
+  <div class="vocab-foot">
+    <span class="de">+ 6 weitere</span>
+    <div class="links"><button type="button" class="link" id="copy-q">Für Quizlet kopieren</button><button type="button" class="link quiet">TSV</button><button type="button" class="link quiet">CSV</button><button type="button" class="link">Zum Dialog →</button></div>
+  </div>
+</div></section>
+
+<!-- 4 Reading -->
+<section class="scene"><div class="wrap">
+  <div class="talk">
+    <div class="progress"><i style="width:20%"></i></div>
+    <div class="meta"><span class="label">Lesen</span><span class="label">2 / 10</span></div>
+    <canvas class="orb" id="orb1" role="button" tabindex="0" aria-label="Camille spricht. Antippen zum Wiederholen."></canvas>
+    <span class="label who">Camille · boulangère</span>
+    <p class="line" id="line1">Bonjour&nbsp;! Qu'est-ce que je vous sers&nbsp;?</p>
+    <p class="de trans" id="trans1">&nbsp;</p>
+    <div class="links line-tools"><button type="button" class="link quiet" data-play="1" data-rate="0.95">Nochmal</button><button type="button" class="link quiet" data-play="1" data-rate="0.65">Langsam</button><button type="button" class="link quiet" id="tbtn1">Übersetzen</button></div>
+
+    <div class="you">
+      <span class="label">Du liest vor</span>
+      <p class="target">Bonjour&nbsp;! Je voudrais une baguette et deux <span class="miss" id="miss">croissants</span>, s'il vous plaît.</p>
+    </div>
+
+    <div class="result" id="res1">
+      <div class="score" id="score1">82<small>/ 100</small></div>
+      <p class="tip" id="tip1">Fast. In <i>croissants</i> bleibt das <i>s</i> am Ende stumm, und das <i>r</i> entsteht hinten im Rachen.</p>
+    </div>
+
+    <div class="mic-wrap">
+      <button type="button" class="mic" id="mic1" aria-label="Aufnahme starten"><svg class="i"><use href="#i-mic"/></svg></button>
+      <span class="mic-state" id="state1">Tippen und nochmal versuchen</span>
+    </div>
+  </div>
+</div></section>
+
+<!-- 5 Speaking -->
+<section class="scene"><div class="wrap">
+  <div class="talk">
+    <div class="progress"><i style="width:40%"></i></div>
+    <div class="meta"><span class="label">Sprechen</span><span class="label">4 / 10</span></div>
+    <canvas class="orb" id="orb2" role="button" tabindex="0" aria-label="Camille spricht. Antippen zum Wiederholen."></canvas>
+    <span class="label who">Camille · boulangère</span>
+    <p class="line" id="line2">Et avec ceci&nbsp;?</p>
+
+    <div class="you">
+      <span class="label">Deine Antwort, frei aus dem Gedächtnis</span>
+      <p class="cue">Frag, ob es auch Vollkornbrot gibt.</p>
+      <div class="hint-row"><button type="button" class="link" id="hint">Hinweis</button><span class="dots" id="dots"><i></i><i></i><i></i></span></div>
+      <div class="hints" id="hints"></div>
+    </div>
+
+    <div class="result" id="res2" hidden>
+      <p class="said">„Vous avez aussi du pain complet&nbsp;?“</p>
+      <p class="tip">Richtig. Anders formuliert als im Skript, aber natürlich, und <i>du</i> sitzt.</p>
+      <p class="script">Im Skript: <em>Est-ce que vous avez aussi du pain complet&nbsp;?</em></p>
+    </div>
+
+    <div class="mic-wrap">
+      <button type="button" class="mic" id="mic2" aria-label="Aufnahme starten"><svg class="i"><use href="#i-mic"/></svg></button>
+      <span class="mic-state" id="state2">Tippen zum Sprechen</span>
+    </div>
+  </div>
+</div></section>
+
+<!-- Under the hood -->
+<section class="scene hood" id="coulisses"><div class="wrap">
+  <div class="scene-head"><span class="label">Unter der Haube</span><span class="label">Tailwind CSS + shadcn/ui</span></div>
+  <div class="hood-grid">
+    <div class="sw"><span class="label">Farben</span><div class="chipline"><span class="chip" style="background:var(--bg)"></span><span class="chip" style="background:var(--ink)"></span><span class="chip" style="background:var(--muted)"></span><span class="chip" style="background:var(--accent)"></span></div><span class="de">Papier, Tinte, Grau. Rot nur für „live“ und Fehler.</span></div>
+    <div class="sw"><span class="label">Serif · Bodoni Moda</span><span class="spec">Aa <i>Aa</i></span><span class="de">Alles, was man liest, vor allem Französisch.</span></div>
+    <div class="sw"><span class="label">Sans · Inter</span><span class="spec-sans">Aa</span><span class="de">Nur kleine Beschriftungen und deutsche Hilfetexte.</span></div>
+  </div>
+  <p class="de" style="margin-top:40px">Same stack as proposal 1. Only the token file changed: colors, fonts and radius. Audio in this prototype uses your browser's French voice, while the app will use Azure voices. The microphone is simulated here.</p>
+</div></section>
+
+<footer><div class="wrap"><span class="de">Example content · Studio look adapted from your reference</span></div></footer>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Light / dark */
+  var modeBtn = document.getElementById('mode');
+  function isDark() { return root.getAttribute('data-theme') === 'dark'; }
+  function syncMode() { modeBtn.textContent = isDark() ? 'Hell' : 'Dunkel'; }
+  modeBtn.addEventListener('click', function () { root.setAttribute('data-theme', isDark() ? 'light' : 'dark'); syncMode(); });
+  syncMode();
+
+  /* Scenario list */
+  var sc = document.getElementById('scenes');
+  sc.querySelectorAll('.scen').forEach(function (b) {
+    b.addEventListener('click', function () { sc.querySelectorAll('.scen').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); });
+  });
+
+  /* Graphite speaker */
+  function Orb(canvas) {
+    this.c = canvas; this.ctx = canvas.getContext('2d');
+    this.p = []; this.energy = 0.04; this.target = 0.04; this.mode = 'idle'; this.visible = true;
+    for (var i = 0; i < 1500; i++) {
+      var dust = Math.random() < 0.16;
+      this.p.push({
+        a: Math.random() * Math.PI * 2,
+        r: dust ? 1 + Math.random() * 0.55 : Math.pow(Math.random(), 0.55),
+        s: dust ? 0.6 + Math.random() * 0.9 : 0.7 + Math.random() * 1.5,
+        o: dust ? 0.12 + Math.random() * 0.3 : 0.25 + Math.random() * 0.6,
+        k: 2 + Math.floor(Math.random() * 4), ph: Math.random() * 6.28,
+        drift: dust ? 0.0006 + Math.random() * 0.0016 : 0
+      });
+    }
+    this.resize();
+  }
+  Orb.prototype.resize = function () {
+    var d = Math.min(window.devicePixelRatio || 1, 2), w = this.c.clientWidth || 300;
+    this.c.width = w * d; this.c.height = w * d; this.d = d; this.w = w;
+  };
+  Orb.prototype.draw = function (t) {
+    var ctx = this.ctx, d = this.d, W = this.w, cx = W / 2, cy = W / 2, R = W * 0.3;
+    var ink = getComputedStyle(root).getPropertyValue('--ink').trim() || '#111';
+    if (this.mode === 'speak') this.target = 0.1 + 0.16 * Math.abs(Math.sin(t * 9.3) * Math.sin(t * 3.7));
+    else if (this.mode === 'listen') this.target = 0.03 + 0.02 * Math.sin(t * 2);
+    else this.target = 0.035;
+    this.energy += (this.target - this.energy) * 0.12;
+    var squeeze = this.mode === 'listen' ? 0.9 : 1;
+    ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, W, W); ctx.fillStyle = ink;
+    for (var i = 0; i < this.p.length; i++) {
+      var q = this.p[i];
+      if (q.drift) { q.r += q.drift * (1 + this.energy * 8); if (q.r > 1.65) q.r = 1; }
+      var wob = 1 + this.energy * (Math.sin(q.a * q.k + t * 1.6 + q.ph) * 0.6 + Math.sin(q.a * 7 - t * 2.4) * 0.4);
+      var rr = q.r * R * wob * squeeze;
+      var fade = q.drift ? Math.max(0, 1 - (q.r - 1) / 0.65) : 1;
+      ctx.globalAlpha = q.o * fade;
+      ctx.fillRect(cx + Math.cos(q.a + t * 0.04) * rr, cy + Math.sin(q.a + t * 0.04) * rr * 0.96, q.s, q.s);
+    }
+    ctx.globalAlpha = 1;
+  };
+  var orbs = [new Orb(document.getElementById('orb1')), new Orb(document.getElementById('orb2'))];
+  window.addEventListener('resize', function () { orbs.forEach(function (o) { o.resize(); }); if (reduce) orbs.forEach(function (o) { o.draw(0); }); });
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { orbs.forEach(function (o) { if (o.c === e.target) o.visible = e.isIntersecting; }); }); });
+    orbs.forEach(function (o) { io.observe(o.c); });
+  }
+  if (reduce) { orbs.forEach(function (o) { o.draw(0); }); }
+  else {
+    (function loop(ms) { var t = ms / 1000; orbs.forEach(function (o) { if (o.visible) o.draw(t); }); requestAnimationFrame(loop); })(0);
+  }
+
+  /* Speech (browser voice in the prototype) */
+  var frVoice = null;
+  function pickVoice() {
+    try { var v = speechSynthesis.getVoices(); frVoice = v.filter(function (x) { return /^fr(-|_)FR/i.test(x.lang); })[0] || v.filter(function (x) { return /^fr/i.test(x.lang); })[0] || null; } catch (e) {}
+  }
+  try { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {}
+  function speak(text, rate, orb) {
+    var simulated = function () { if (orb) { orb.mode = 'speak'; setTimeout(function () { orb.mode = 'idle'; }, 1800 / (rate || 1)); } };
+    try {
+      if (!window.speechSynthesis) return simulated();
+      speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text.replace(/ /g, ' '));
+      u.lang = 'fr-FR'; u.rate = rate || 0.95; if (frVoice) u.voice = frVoice;
+      if (orb) { u.onstart = function () { orb.mode = 'speak'; }; u.onend = u.onerror = function () { orb.mode = 'idle'; }; }
+      speechSynthesis.speak(u);
+      if (orb) setTimeout(function () { if (orb.mode !== 'speak') simulated(); }, 400);
+    } catch (e) { simulated(); }
+  }
+  var lines = { 1: document.getElementById('line1'), 2: document.getElementById('line2') };
+  [1, 2].forEach(function (n) {
+    var o = orbs[n - 1];
+    var play = function () { speak(lines[n].textContent, 0.95, o); };
+    o.c.addEventListener('click', play);
+    o.c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); } });
+  });
+  document.querySelectorAll('[data-play]').forEach(function (b) {
+    b.addEventListener('click', function () { var n = b.getAttribute('data-play'); speak(lines[n].textContent, parseFloat(b.getAttribute('data-rate')), orbs[n - 1]); });
+  });
+  document.querySelectorAll('.voc').forEach(function (b) {
+    b.addEventListener('click', function () { b.classList.add('say'); setTimeout(function () { b.classList.remove('say'); }, 900); speak(b.getAttribute('data-say'), 0.9, null); });
+  });
+
+  /* Translation */
+  var tb = document.getElementById('tbtn1'), tr = document.getElementById('trans1'), shown = false;
+  tb.addEventListener('click', function () { shown = !shown; tr.textContent = shown ? 'Guten Tag! Was darf es sein?' : ' '; tb.textContent = shown ? 'Ausblenden' : 'Übersetzen'; });
+
+  /* Grammar exercise */
+  var ex = document.getElementById('exo'), vd = document.getElementById('verdict');
+  document.getElementById('exo-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = ex.value.trim().toLowerCase().replace(/\s+/g, ' ');
+    ex.classList.remove('ok', 'no');
+    if (!v) { vd.textContent = 'Eingeben und Enter drücken.'; return; }
+    if (v === 'de la') { ex.classList.add('ok'); vd.innerHTML = '<b>Richtig.</b> <i>confiture</i> ist feminin, also <i>de la confiture</i>.'; }
+    else { ex.classList.add('no'); vd.innerHTML = '<b>Noch nicht.</b> <i>confiture</i> ist feminin. Welcher Artikel passt?'; }
+  });
+
+  /* Simulated microphone */
+  function micFlow(n, idleText, onDone) {
+    var mic = document.getElementById('mic' + n), st = document.getElementById('state' + n), o = orbs[n - 1], timer = null, rec = false;
+    function stop() {
+      if (!rec) return; rec = false; clearTimeout(timer);
+      mic.classList.remove('rec'); mic.innerHTML = '<svg class="i"><use href="#i-mic"/></svg>'; mic.setAttribute('aria-label', 'Aufnahme starten');
+      o.mode = 'idle'; st.textContent = 'Wird ausgewertet …';
+      setTimeout(function () { onDone(); st.textContent = idleText; }, 900);
+    }
+    mic.addEventListener('click', function () {
+      if (rec) return stop();
+      rec = true; mic.classList.add('rec'); mic.innerHTML = '<svg class="i"><use href="#i-stop"/></svg>'; mic.setAttribute('aria-label', 'Aufnahme beenden');
+      o.mode = 'listen'; st.textContent = 'Hört zu … tippen zum Beenden';
+      timer = setTimeout(stop, 4500);
+    });
+  }
+  var attempt = 0;
+  micFlow(1, 'Tippen und nochmal versuchen', function () {
+    attempt++;
+    var good = attempt % 2 === 1;
+    document.getElementById('score1').innerHTML = (good ? '94' : '82') + '<small>/ 100</small>';
+    document.getElementById('tip1').innerHTML = good ? 'Sehr gut. Das <i>s</i> in <i>croissants</i> war diesmal stumm.' : 'Fast. In <i>croissants</i> bleibt das <i>s</i> am Ende stumm, und das <i>r</i> entsteht hinten im Rachen.';
+    document.getElementById('miss').className = good ? '' : 'miss';
+    var r = document.getElementById('res1'); r.style.animation = 'none'; void r.offsetWidth; r.style.animation = '';
+  });
+  micFlow(2, 'Weiter mit Tippen auf Camille', function () { document.getElementById('res2').hidden = false; });
+
+  /* Hints */
+  var steps = ['avoir · le pain complet', 'Est-ce que vous …', 'Est-ce que vous avez aussi du pain complet ?'];
+  var hi = 0, hBtn = document.getElementById('hint'), hBox = document.getElementById('hints'), dots = document.getElementById('dots').children;
+  hBtn.addEventListener('click', function () {
+    if (hi >= steps.length) return;
+    hBox.innerHTML = ''; var s = document.createElement('span'); s.textContent = steps[hi]; hBox.appendChild(s);
+    dots[hi].classList.add('on'); hi++;
+    hBtn.textContent = hi < steps.length ? 'Weiterer Hinweis' : 'Alle Hinweise genutzt';
+  });
+
+  /* Quizlet copy */
+  var cq = document.getElementById('copy-q');
+  cq.addEventListener('click', function () {
+    var tsv = 'la baguette\tdas Baguette\nle pain complet\tdas Vollkornbrot\nl\'addition (f)\tdie Rechnung\nla monnaie\tdas Wechselgeld\nje voudrais …\tich hätte gern …\navec ceci ?\tsonst noch etwas?';
+    function done(t) { cq.textContent = t; setTimeout(function () { cq.textContent = 'Für Quizlet kopieren'; }, 1800); }
+    try { navigator.clipboard.writeText(tsv).then(function () { done('Kopiert'); }, function () { done('Kopieren nicht möglich'); }); }
+    catch (e) { done('Kopieren nicht möglich'); }
+  });
+})();
+</script>
