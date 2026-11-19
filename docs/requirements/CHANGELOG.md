@@ -11,7 +11,28 @@
 
 ---
 
-## v1.3, 2026-11-19 (current)
+## v1.4, 2026-11-19 (current)
+
+**Name**
+- The app is called **parl.ai** ("speak first, learn later"). New **DS-0** for the name and wordmark; the spec title changed accordingly. The design reference was updated to the new wordmark.
+
+**Setup decisions recorded (T-6, decisions log 9–12)**
+- Login: Better Auth with its magic-link plugin. **U-1** now states the link is valid for 15 minutes and works once.
+- Invite list: `INVITED_EMAILS` or the `invites` table; addresses that are not invited get a clear message and no email (**U-6**).
+- Email: Resend in production, server log in development.
+- Database: Drizzle ORM, with an embedded PostgreSQL (PGlite) for local development.
+- Hosting provider: still open.
+
+**Added**
+- **T-7**: every page except login needs a session, and every costly or user-data API route checks the session itself.
+
+**Clarified**
+- §5.2: how recording and scoring work (16 kHz mono WAV, up to 30 s per line, Azure REST, LLM tips with a scores-only fallback, recordings never stored).
+- **T-4**: default French voice, and the browser-voice fallback when Azure is not configured.
+
+Archived: [archive/REQUIREMENTS_v1.3.md](archive/REQUIREMENTS_v1.3.md)
+
+## v1.3, 2026-11-19
 
 **Added: lesson length (§3.1, L-1 to L-7)**
 - The user chooses 5, 10 or 15 minutes per lesson (L-1). The length covers Stages 0–3; Stage 4 has its own limit (L-2).

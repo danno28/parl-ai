@@ -5,7 +5,7 @@
  */
 export const de = {
   app: {
-    description: "Französisch lernen in echten Alltagsszenen.",
+    description: "Erst sprechen, dann lernen. Französisch in echten Alltagsszenen.",
   },
   nav: {
     demo: "Demo",
@@ -43,7 +43,27 @@ export const de = {
     speakerHint: "Antippen zum Wiederholen",
   },
   demo: {
-    note: "Demo mit Beispielinhalt. Mikrofon und Bewertung sind noch simuliert.",
+    noteSimulated:
+      "Demo mit Beispielinhalt. Azure Speech ist nicht eingerichtet, deshalb sind Stimme und Bewertung simuliert.",
+    noteLive: "Demo mit Beispielinhalt. Stimme und Aussprachebewertung laufen über Azure Speech.",
+    micDenied: "Kein Zugriff aufs Mikrofon. Bitte im Browser erlauben und nochmal versuchen.",
+    tooShort: "Nichts erkannt. Bitte etwas lauter und deutlicher sprechen.",
+    failed: "Die Bewertung hat nicht geklappt. Bitte nochmal versuchen.",
+  },
+  login: {
+    label: "Anmelden",
+    title: "Bon retour.",
+    subtitle: "Melde dich mit deiner E-Mail-Adresse an. Wir schicken dir einen Link.",
+    email: "E-Mail-Adresse",
+    submit: "Link senden",
+    sending: "Wird gesendet …",
+    sentTitle: "Schau in dein Postfach.",
+    sentBody: "Wir haben einen Anmeldelink an {email} geschickt. Er ist 15 Minuten gültig.",
+    otherEmail: "Andere E-Mail-Adresse",
+    notInvited: "Diese E-Mail-Adresse ist nicht eingeladen. parl.ai ist im Moment nur auf Einladung nutzbar.",
+    failed: "Das hat nicht geklappt. Bitte nochmal versuchen.",
+    linkExpired: "Der Link ist abgelaufen oder wurde schon benutzt. Fordere einfach einen neuen an.",
+    signOut: "Abmelden",
   },
 } as const;
 

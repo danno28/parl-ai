@@ -1,6 +1,6 @@
-# français
+# parl.ai
 
-A browser-based, AI-driven app for learning French through real-life scenarios. The learner works through a grammar primer (optional), vocabulary, reading a dialogue aloud, speaking it from memory and, optionally, free conversation.
+*Speak first, learn later.* A browser-based, AI-driven app for learning French through real-life scenarios. The learner works through a grammar primer (optional), vocabulary, reading a dialogue aloud, speaking it from memory and, optionally, free conversation.
 
 - **Requirements:** [docs/requirements/REQUIREMENTS.md](docs/requirements/REQUIREMENTS.md) (current version), with history in [CHANGELOG.md](docs/requirements/CHANGELOG.md)
 - **Visual reference:** [docs/design/design-preview.html](docs/design/design-preview.html)
@@ -9,12 +9,24 @@ A browser-based, AI-driven app for learning French through real-life scenarios. 
 
 ```bash
 npm install
-cp .env.example .env.local   # then fill in keys
+cp .env.example .env.local   # then fill in BETTER_AUTH_SECRET and INVITED_EMAILS at least
 npm run db:migrate           # creates the local database in .data/
 npm run dev                  # http://localhost:3000
 ```
 
-Without any keys, the UI runs (home page and `/demo`). AI generation needs Claude credentials, and speech needs an Azure Speech key.
+**Signing in locally:** open the app, enter an invited email, and copy the login link from the terminal where `npm run dev` runs (with `EMAIL_PROVIDER=console`, emails are printed there instead of sent).
+
+**What needs which key:**
+- Nothing extra: login, home page, and `/demo` with the browser's voice and a simulated score.
+- `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`: the real French voice and real pronunciation scoring on `/demo`.
+- Claude credentials (`ANTHROPIC_API_KEY` or `ant auth login`): AI tips on top of the scores, and lesson generation.
+- `RESEND_API_KEY` + `EMAIL_FROM` with `EMAIL_PROVIDER=resend`: real login emails.
+
+### Setting up Azure Speech
+
+1. In the Azure portal, create a **Speech** resource (Azure AI services). Pick a region near you, e.g. *West Europe* or *France Central*. The free tier (F0) is enough to try it.
+2. Open the resource → **Keys and Endpoint**. Copy *Key 1* and the *Location/Region* (e.g. `westeurope`).
+3. Put them in `.env.local` as `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`, then restart `npm run dev`.
 
 ## Scripts
 
@@ -24,13 +36,14 @@ Without any keys, the UI runs (home page and `/demo`). AI generation needs Claud
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | Generate route types and run TypeScript |
+| `npm test` | Unit tests (Vitest) |
 | `npm run db:generate` | Create a migration after changing `src/db/schema.ts` |
 | `npm run db:migrate` | Apply migrations |
 | `npm run db:studio` | Browse the database |
 
 ## Stack
 
-Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (Radix), Drizzle ORM with PostgreSQL (embedded PGlite locally), Anthropic SDK, Zod.
+Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui (Radix), Drizzle ORM with PostgreSQL (embedded PGlite locally), Better Auth (magic link), Anthropic SDK, Azure Speech (REST), Zod, Vitest.
 
 ## Project structure
 
@@ -46,8 +59,11 @@ src/
   i18n/                 UI strings per native language (German in v1)
   lib/
     ai/                 Provider-neutral LLM interface + Claude implementation, per-task model/effort config
-    speech/             Speech assessment interface + Azure provider (stub)
-    tts/                Text-to-speech interface + Azure provider (stub)
+    speech/             Speech assessment interface + Azure provider (pronunciation scoring)
+    tts/                Text-to-speech interface + Azure provider, with a per-sentence disk cache
+    audio/              Browser side: 16 kHz WAV recorder, playback with browser-voice fallback
+    auth.ts, session.ts Login (Better Auth, invite-only magic link) and session checks for API routes
+    email.ts            Outgoing email: server log in development, Resend in production
     schemas/            Zod schemas for every structured AI output (A-2)
     lessons/            Lesson generation, Quizlet/CSV export and import
   prompts/              Versioned prompt templates (v1/), no hard-coded languages (A-7)

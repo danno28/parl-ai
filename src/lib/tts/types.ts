@@ -14,4 +14,6 @@ export type SynthesisRequest = {
 export interface TTSProvider {
   readonly id: string;
   synthesize(req: SynthesisRequest): Promise<SpeechAudio>;
+  /** Identifies one rendering (provider, voice, rate, format, text) for the cache. */
+  cacheKey(req: SynthesisRequest): string;
 }

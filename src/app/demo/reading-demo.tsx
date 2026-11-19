@@ -3,54 +3,117 @@
 import { useEffect, useRef, useState } from "react";
 import { GraphiteSpeaker, type SpeakerMode } from "@/components/conversation/graphite-speaker";
 import { MicButton } from "@/components/conversation/mic-button";
+import { MicrophoneDeniedError, WavRecorder } from "@/lib/audio/wav-recorder";
+import { speak, stopSpeaking } from "@/lib/audio/speak";
+import type { PronunciationFeedback } from "@/lib/schemas/lesson";
 import { t } from "@/i18n";
 
 /**
- * Stage 2 screen (DS-8) with example content. Audio uses the browser's French voice
- * as a stand-in until the Azure TTS provider is wired up; recording is simulated.
+ * Stage 2 screen (DS-8) with example content.
+ * With Azure Speech configured: real voice, real recording, real scores and AI tips.
+ * Without it: browser voice and a simulated result, so the design can still be tried.
  */
 // French typography: a non-breaking space before ? and ! (as the prompts require of AI output).
 const PARTNER_LINE = "Bonjour ! Qu'est-ce que je vous sers ?";
 const PARTNER_TRANSLATION = "Guten Tag! Was darf es sein?";
 const USER_LINE = "Bonjour ! Je voudrais une baguette et deux croissants, s'il vous plaît.";
+const MAX_SECONDS = 30;
+
+const SIMULATED: PronunciationFeedback = {
+  score: 82,
+  label: "good",
+  problemWords: ["croissants"],
+  tipsNative: ["In croissants bleibt das s am Ende stumm."],
+};
 
 type Phase = "ready" | "recording" | "evaluating" | "done";
 
+const normalizeWord = (w: string) =>
+  w.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z']/g, "");
+
 export function ReadingDemo() {
+  const [configured, setConfigured] = useState<boolean | null>(null);
   const [speaker, setSpeaker] = useState<SpeakerMode>("idle");
   const [phase, setPhase] = useState<Phase>("ready");
+  const [feedback, setFeedback] = useState<PronunciationFeedback | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [showTranslation, setShowTranslation] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const recorder = useRef<WavRecorder | null>(null);
+  const autoStop = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  function speak(rate = 0.95) {
-    const fallback = () => {
-      setSpeaker("speak");
-      timer.current = setTimeout(() => setSpeaker("idle"), 1800 / rate);
+  useEffect(() => {
+    fetch("/api/speech/status")
+      .then((r) => (r.ok ? r.json() : { configured: false }))
+      .then((s: { configured: boolean }) => setConfigured(s.configured))
+      .catch(() => setConfigured(false));
+    return () => {
+      clearTimeout(autoStop.current);
+      recorder.current?.cancel();
+      stopSpeaking();
     };
-    if (!("speechSynthesis" in window)) return fallback();
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(PARTNER_LINE);
-    u.lang = "fr-FR";
-    u.rate = rate;
-    const voice = window.speechSynthesis.getVoices().find((v) => v.lang.startsWith("fr"));
-    if (voice) u.voice = voice;
-    u.onstart = () => setSpeaker("speak");
-    u.onend = u.onerror = () => setSpeaker("idle");
-    window.speechSynthesis.speak(u);
+  }, []);
+
+  function playPartner(rate = 1) {
+    void speak(
+      PARTNER_LINE,
+      { rate, useServer: configured === true },
+      { onStart: () => setSpeaker("speak"), onEnd: () => setSpeaker("idle") },
+    );
   }
 
-  function toggleRecording() {
-    clearTimeout(timer.current);
-    if (phase === "recording") {
-      setSpeaker("idle");
-      setPhase("evaluating");
-      timer.current = setTimeout(() => setPhase("done"), 900);
-    } else {
-      setSpeaker("listen");
-      setPhase("recording");
+  async function startRecording() {
+    setError(null);
+    stopSpeaking();
+    if (configured) {
+      const r = new WavRecorder();
+      try {
+        await r.start();
+      } catch (e) {
+        setError(e instanceof MicrophoneDeniedError ? t("demo.micDenied") : t("demo.failed"));
+        return;
+      }
+      recorder.current = r;
+      autoStop.current = setTimeout(() => void stopRecording(), MAX_SECONDS * 1000);
     }
+    setSpeaker("listen");
+    setPhase("recording");
+  }
+
+  async function stopRecording() {
+    clearTimeout(autoStop.current);
+    setSpeaker("idle");
+    setPhase("evaluating");
+
+    if (!configured || !recorder.current) {
+      setTimeout(() => {
+        setFeedback(SIMULATED);
+        setPhase("done");
+      }, 900);
+      return;
+    }
+
+    const { wav, seconds } = await recorder.current.stop();
+    recorder.current = null;
+    if (seconds < 0.5) {
+      setError(t("demo.tooShort"));
+      setPhase("ready");
+      return;
+    }
+
+    const form = new FormData();
+    form.set("audio", wav, "recording.wav");
+    form.set("referenceText", USER_LINE);
+    form.set("level", "A2");
+    const response = await fetch("/api/speech/assess", { method: "POST", body: form });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      setError(body.error === "NO_SPEECH" ? t("demo.tooShort") : t("demo.failed"));
+      setPhase(feedback ? "done" : "ready");
+      return;
+    }
+    const result = (await response.json()) as { feedback: PronunciationFeedback };
+    setFeedback(result.feedback);
+    setPhase("done");
   }
 
   const status =
@@ -62,7 +125,8 @@ export function ReadingDemo() {
           ? t("conversation.tryAgain")
           : t("conversation.tapToSpeak");
 
-  const [before, after] = USER_LINE.split("croissants");
+  const problems = new Set((feedback?.problemWords ?? []).map(normalizeWord));
+  const words = USER_LINE.split(/(\s+)/);
 
   return (
     <div className="mx-auto grid max-w-3xl justify-items-center text-center">
@@ -77,7 +141,7 @@ export function ReadingDemo() {
       <GraphiteSpeaker
         mode={speaker}
         label={`Camille. ${t("conversation.speakerHint")}`}
-        onActivate={() => speak()}
+        onActivate={() => playPartner()}
         className="mt-4"
       />
       <span className="label-caps mt-1">Camille · boulangère</span>
@@ -87,10 +151,10 @@ export function ReadingDemo() {
         {showTranslation ? PARTNER_TRANSLATION : ""}
       </p>
       <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2 font-sans text-sm font-medium text-muted-foreground">
-        <button type="button" onClick={() => speak()} className="border-b pb-0.5 hover:border-foreground">
+        <button type="button" onClick={() => playPartner()} className="border-b pb-0.5 hover:border-foreground">
           {t("conversation.replay")}
         </button>
-        <button type="button" onClick={() => speak(0.65)} className="border-b pb-0.5 hover:border-foreground">
+        <button type="button" onClick={() => playPartner(0.7)} className="border-b pb-0.5 hover:border-foreground">
           {t("conversation.slow")}
         </button>
         <button
@@ -105,42 +169,54 @@ export function ReadingDemo() {
       <div className="mt-14 grid justify-items-center gap-3">
         <span className="label-caps">{t("conversation.youRead")}</span>
         <p className="max-w-[30ch] text-[clamp(1.4rem,3.2vw,2rem)] leading-tight italic">
-          {before}
-          <span
-            className={
-              phase === "done"
-                ? "underline decoration-live decoration-2 underline-offset-[7px]"
-                : undefined
-            }
-          >
-            croissants
-          </span>
-          {after}
+          {words.map((w, i) =>
+            phase === "done" && problems.has(normalizeWord(w)) ? (
+              <span key={i} className="underline decoration-live decoration-2 underline-offset-[7px]">
+                {w}
+              </span>
+            ) : (
+              <span key={i}>{w}</span>
+            ),
+          )}
         </p>
       </div>
 
-      {phase === "done" && (
+      {phase === "done" && feedback && (
         <div className="mt-8 grid max-w-xl justify-items-center gap-2 animate-in fade-in slide-in-from-bottom-1">
           <div className="text-6xl leading-none tabular-nums">
-            82<small className="ml-1 font-sans text-sm text-muted-foreground">/ 100</small>
+            {Math.round(feedback.score)}
+            <small className="ml-1 font-sans text-sm text-muted-foreground">/ 100</small>
           </div>
-          <p className="text-lg text-muted-foreground">
-            Fast. In <i className="text-foreground">croissants</i> bleibt das{" "}
-            <i className="text-foreground">s</i> am Ende stumm.
-          </p>
+          {feedback.tipsNative.map((tip) => (
+            <p key={tip} className="text-lg text-muted-foreground">
+              {tip}
+            </p>
+          ))}
         </div>
+      )}
+
+      {error && (
+        <p role="alert" className="mt-6 font-sans text-sm text-live">
+          {error}
+        </p>
       )}
 
       <div className="mt-8 grid justify-items-center gap-3">
         <MicButton
           recording={phase === "recording"}
-          onToggle={toggleRecording}
-          disabled={phase === "evaluating"}
+          onToggle={() => void (phase === "recording" ? stopRecording() : startRecording())}
+          disabled={phase === "evaluating" || configured === null}
         />
         <span className="font-sans text-sm text-muted-foreground" aria-live="polite">
           {status}
         </span>
       </div>
+
+      {configured !== null && (
+        <p className="mt-16 font-sans text-xs text-muted-foreground">
+          {configured ? t("demo.noteLive") : t("demo.noteSimulated")}
+        </p>
+      )}
     </div>
   );
 }

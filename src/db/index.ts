@@ -21,8 +21,24 @@ function connect() {
   return drizzlePostgres({ client: postgres(url), schema });
 }
 
-const globalForDb = globalThis as unknown as { db?: ReturnType<typeof connect> };
+type Database = ReturnType<typeof connect>;
+const globalForDb = globalThis as unknown as { db?: Database };
 
 /** One connection per server process (survives hot reload in development). */
-export const db = globalForDb.db ?? (globalForDb.db = connect());
+function instance(): Database {
+  return (globalForDb.db ??= connect());
+}
+
+/**
+ * The database, connected on first use rather than on import. Importing it is free,
+ * so the build (which loads route modules in several workers) never opens the
+ * local PGlite folder concurrently.
+ */
+export const db = new Proxy({} as Database, {
+  get(_target, prop) {
+    const real = instance();
+    const value = Reflect.get(real, prop, real);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
+});
 export { schema };
