@@ -28,10 +28,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             parl.ai
           </Link>
           <span className="flex-1" />
-          <Link href="/demo" className="hidden sm:inline">
-            {t("nav.demo")}
-          </Link>
-          <span className="rounded-full border border-foreground px-2 text-xs">A2</span>
           <ThemeToggle />
           <SignOutButton />
         </header>

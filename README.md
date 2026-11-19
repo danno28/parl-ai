@@ -16,6 +16,8 @@ npm run dev                  # http://localhost:3000
 
 **Signing in locally:** open the app and enter an invited email. With `npm run dev` and `EMAIL_PROVIDER=console` (no email service), the page then shows a **Jetzt anmelden** button with the login link; the link is also printed in the server log. This shortcut never exists in a production build or once real emails are sent. Sessions last 60 days, so you rarely need to sign in again.
 
+**Using it:** pick a scenario (or type your own), the length and your level on the home page. Claude writes the lesson (about 30 seconds) and it is saved to your account. Each lesson has three working stages: vocabulary, reading aloud, and speaking from memory with hints. Your position and every score are saved, so you can resume at any time. Without a microphone or Azure key, you can type your answers instead. In development without a Claude key, the home page offers a hand-written sample lesson.
+
 **What needs which key:**
 - Nothing extra: login, home page, and `/demo` with the browser's voice and a simulated score.
 - `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION`: the real French voice and real pronunciation scoring on `/demo`.

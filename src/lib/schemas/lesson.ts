@@ -88,6 +88,12 @@ export const SpeakingFeedbackSchema = z.object({
   correctedTarget: z.string().describe("Corrected version of what the user said; same as input if correct"),
   feedbackNative: z.string().describe("1–3 sentences in the feedback language"),
   grammarFocusUsedCorrectly: z.enum(["yes", "no", "not_used"]),
+  nextPartnerLineTarget: z
+    .string()
+    .describe(
+      "The partner's next line, adapted so it responds naturally to what the learner actually said (D-6). Same as the scripted line if it still fits. Empty if there is no next partner line",
+    ),
+  nextPartnerLineNative: z.string().describe("Translation of nextPartnerLineTarget; empty if none"),
 });
 
 export type ScenarioSuggestion = z.infer<typeof ScenarioSuggestionSchema>;
