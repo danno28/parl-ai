@@ -1,6 +1,8 @@
-# French Learning App: Requirements v1.3
+# parl.ai: Requirements v1.4
 
-Status: **Approved, 2026-11-19.** All open decisions were resolved with the recommended defaults (see §13).
+*Speak first, learn later.* A French learning app (working title until v1.3: "French Learning App").
+
+Status: **Approved, 2026-11-19.** All open decisions were resolved with the recommended defaults (see §13). The remaining setup choices were made in v1.4 (§13).
 Version history: [CHANGELOG.md](CHANGELOG.md). Earlier versions are kept unchanged in [archive/](archive/).
 
 ---
@@ -33,12 +35,12 @@ A browser-based, AI-driven app that teaches French through concrete real-life sc
 
 | ID | Requirement |
 |---|---|
-| U-1 | A user can register and log in by **email magic link** (no passwords to store). |
+| U-1 | A user can register and log in by **email magic link** (no passwords to store). A link is valid for 15 minutes and works once. Login uses the **Better Auth** library. |
 | U-2 | The profile stores the display name, native language (`de`), target language (`fr`), current CEFR level, and preferred feedback language. |
 | U-3 | The user sets their level manually from **A1, A2, B1, B2, C1, C2**. They can change it at any time, and can also override it for a single scenario. |
 | U-4 | The user chooses the **feedback language**: German (default) or French. At A1–A2, German is strongly recommended. |
 | U-5 | The user can delete their account and all of their data (GDPR). |
-| U-6 | The app is **personal / invite-only**: only invited email addresses can register. There is no public sign-up. This keeps API costs, abuse protection and legal overhead small. |
+| U-6 | The app is **personal / invite-only**: only invited email addresses can register. There is no public sign-up. This keeps API costs, abuse protection and legal overhead small. Invited addresses are listed in configuration (`INVITED_EMAILS`) or in the `invites` table. An address that is not invited gets a clear message and no email. |
 | U-7 | The interface language for v1 is **German**. |
 | U-8 | Profile setting **Grammar lessons**: "Offer before each scenario" (default) or "Always skip". Either way, a single lesson's grammar lesson can still be opened or skipped. |
 | U-9 | Profile setting **Default lesson length**: 5, 10 (default) or 15 minutes (see §3.1). |
@@ -156,6 +158,8 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 > 2. **the LLM**, which compares that result with the target sentence and writes the human-readable feedback and tips
 >
 > **Decided:** the v1 speech service is **Azure Speech "Pronunciation Assessment"**. It scores accuracy, fluency and completeness per word and per sound in French, which gives real pronunciation feedback rather than only "did the transcript match". It costs roughly cents per minute. A cheaper fallback is speech-to-text only (e.g. the browser's built-in recognition, or Whisper). That can detect wrong or missing words, but not *how* well something was pronounced. Either way, this sits behind a `SpeechProvider` interface (see §8).
+>
+> **Implementation (v1.4):** the browser records 16 kHz, 16-bit mono WAV (the format Azure's short-audio API accepts), up to 30 seconds per line. The server sends it to Azure's REST API with the target line as reference text, then asks the LLM to turn the scores into tips. If the LLM is unavailable, the scores are shown without tips. Recordings are processed in memory and never stored (P-5).
 
 ### 5.3 Stage 3: Speaking dialogue (from memory)
 
@@ -222,9 +226,10 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 | T-4 | **Provider abstraction:** three interfaces, each with one implementation in v1. Which provider and model to use is set in configuration, not code. |
 |  | • `LLMProvider`: v1 implementation **Claude** (Anthropic API). Needs text generation, structured/JSON output, and streaming. Others (OpenAI, Gemini, Mistral…) can be added later as further implementations. |
 |  | • `SpeechProvider` (speech-to-text + pronunciation assessment): v1 per §5.2 |
-|  | • `TTSProvider` (text-to-speech): v1 implementation **Azure neural TTS** (same vendor as speech assessment), with natural French voices. Generated audio is cached per sentence. |
+|  | • `TTSProvider` (text-to-speech): v1 implementation **Azure neural TTS** (same vendor as speech assessment), with natural French voices (default voice `fr-FR-DeniseNeural`, configurable). Generated audio is cached per sentence. Without Azure credentials, the app falls back to the browser's built-in voice and simulated scores, so the interface can still be used in development. |
 | T-5 | Different tasks can use different models, set in configuration. For example, a faster model for per-turn feedback and the most capable model for lesson generation. |
-| T-6 | **Tech stack:** TypeScript end to end, **Next.js** (frontend and API routes), **PostgreSQL**. The exact hosting provider and auth library are chosen at project setup. |
+| T-6 | **Tech stack:** TypeScript end to end, **Next.js** (frontend and API routes), **PostgreSQL** via Drizzle ORM (an embedded PostgreSQL, PGlite, for local development). Login: **Better Auth** with its magic-link plugin. Email: **Resend** in production; in development the link is printed to the server log. **The hosting provider is still open.** |
+| T-7 | **Access control:** every page except login requires a session. Every API route that costs money (AI, speech) or touches user data checks the session itself, not only the page redirect. |
 
 ### 8.1 Styling and visual design
 
@@ -232,6 +237,7 @@ Visual reference (approved 2026-11-19): [docs/design/design-preview.html](../des
 
 | ID | Requirement |
 |---|---|
+| DS-0 | **Name and wordmark:** the app is called **parl.ai**, written in lower case in the bold serif. |
 | DS-1 | **Styling stack:** Tailwind CSS v4 and shadcn/ui. shadcn/ui components are copied into the repo (built on Radix primitives), so we own and can restyle them. |
 | DS-2 | **One token file:** all colors, fonts, font weights, corner radius and spacing are defined as CSS variables in a single theme file (`app/globals.css`). Components refer only to roles (e.g. `bg-background`, `text-muted`, `font-serif`), never to raw color values or font names. **A complete redesign must be possible by editing only the token file.** |
 | DS-3 | **Visual direction:** minimal and immersive, built around the conversation. Lots of white space, large type, thin separator lines. No decorative boxes, card shadows or ornaments. Each screen focuses on one thing. |
@@ -305,3 +311,7 @@ Each of these needs v1 to make the listed design choices, even though the featur
 | 6 | Optionally store audio recordings (P-5) | No |
 | 7 | UI language for v1 | German |
 | 8 | Tech stack and hosting (T-6) | TypeScript / Next.js / Postgres |
+| 9 | App name (v1.4) | parl.ai |
+| 10 | Login library (v1.4, T-6) | Better Auth, magic-link plugin |
+| 11 | Email provider (v1.4, T-6) | Resend (server log in development) |
+| 12 | Hosting provider (T-6) | **Open** |

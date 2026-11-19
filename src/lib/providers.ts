@@ -2,7 +2,7 @@
 
 export class ProviderNotConfiguredError extends Error {
   constructor(
-    readonly kind: "llm" | "speech" | "tts",
+    readonly kind: "llm" | "speech" | "tts" | "email",
     message: string,
   ) {
     super(message);

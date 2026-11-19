@@ -15,3 +15,8 @@ export function getSpeech(): SpeechProvider {
   if (!create) throw new Error(`Unknown SPEECH_PROVIDER "${name}".`);
   return create();
 }
+
+/** True when the speech and voice services have credentials (both use the same Azure resource). */
+export function isSpeechConfigured(): boolean {
+  return Boolean(process.env.AZURE_SPEECH_KEY && process.env.AZURE_SPEECH_REGION);
+}

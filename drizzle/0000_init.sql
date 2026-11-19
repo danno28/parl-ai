@@ -8,6 +8,22 @@ CREATE TYPE "public"."register" AS ENUM('formal', 'informal');--> statement-brea
 CREATE TYPE "public"."scenario_source" AS ENUM('suggested', 'custom', 'vocab_import');--> statement-breakpoint
 CREATE TYPE "public"."speaker" AS ENUM('partner', 'user');--> statement-breakpoint
 CREATE TYPE "public"."theme_preference" AS ENUM('light', 'dark');--> statement-breakpoint
+CREATE TABLE "accounts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"account_id" text NOT NULL,
+	"provider_id" text NOT NULL,
+	"access_token" text,
+	"refresh_token" text,
+	"id_token" text,
+	"access_token_expires_at" timestamp with time zone,
+	"refresh_token_expires_at" timestamp with time zone,
+	"scope" text,
+	"password" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "ai_calls" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid,
@@ -111,10 +127,25 @@ CREATE TABLE "scenarios" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "sessions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"token" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"ip_address" text,
+	"user_agent" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "sessions_token_unique" UNIQUE("token")
+);
+--> statement-breakpoint
 CREATE TABLE "users" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"email" text NOT NULL,
-	"display_name" text,
+	"name" text DEFAULT '' NOT NULL,
+	"email_verified" boolean DEFAULT false NOT NULL,
+	"image" text,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"native_language" text DEFAULT 'de' NOT NULL,
 	"target_language" text DEFAULT 'fr' NOT NULL,
 	"cefr_level" "cefr_level" DEFAULT 'A1' NOT NULL,
@@ -124,6 +155,15 @@ CREATE TABLE "users" (
 	"theme" "theme_preference" DEFAULT 'light' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "users_email_unique" UNIQUE("email")
+);
+--> statement-breakpoint
+CREATE TABLE "verifications" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"identifier" text NOT NULL,
+	"value" text NOT NULL,
+	"expires_at" timestamp with time zone NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "vocabulary_items" (
@@ -143,6 +183,7 @@ CREATE TABLE "vocabulary_items" (
 	"srs_review_count" integer DEFAULT 0 NOT NULL
 );
 --> statement-breakpoint
+ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_calls" ADD CONSTRAINT "ai_calls_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_calls" ADD CONSTRAINT "ai_calls_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "attempts" ADD CONSTRAINT "attempts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -155,6 +196,7 @@ ALTER TABLE "lessons" ADD CONSTRAINT "lessons_user_id_users_id_fk" FOREIGN KEY (
 ALTER TABLE "lessons" ADD CONSTRAINT "lessons_scenario_id_scenarios_id_fk" FOREIGN KEY ("scenario_id") REFERENCES "public"."scenarios"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "lessons" ADD CONSTRAINT "lessons_grammar_topic_id_grammar_topics_id_fk" FOREIGN KEY ("grammar_topic_id") REFERENCES "public"."grammar_topics"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "scenarios" ADD CONSTRAINT "scenarios_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vocabulary_items" ADD CONSTRAINT "vocabulary_items_lesson_id_lessons_id_fk" FOREIGN KEY ("lesson_id") REFERENCES "public"."lessons"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "vocabulary_items" ADD CONSTRAINT "vocabulary_items_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "ai_calls_user_day_idx" ON "ai_calls" USING btree ("user_id","created_at");--> statement-breakpoint
@@ -162,4 +204,5 @@ CREATE INDEX "attempts_lesson_idx" ON "attempts" USING btree ("lesson_id");--> s
 CREATE UNIQUE INDEX "grammar_topics_unique" ON "grammar_topics" USING btree ("target_language","cefr_level","title");--> statement-breakpoint
 CREATE INDEX "events_user_idx" ON "learning_events" USING btree ("user_id","created_at");--> statement-breakpoint
 CREATE INDEX "lessons_user_idx" ON "lessons" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "sessions_user_idx" ON "sessions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "vocabulary_user_idx" ON "vocabulary_items" USING btree ("user_id");
