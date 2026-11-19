@@ -11,7 +11,25 @@
 
 ---
 
-## v1.4, 2026-11-19 (current)
+## v1.5, 2026-11-19 (current)
+
+**Added**
+- **R-8, hands-free flow:** the microphone opens by itself after the partner speaks and closes after a short pause. The "Automatisch zuhören" setting turns it off.
+- **P-7:** unfinished lessons can be removed from the home page, after confirming.
+- Acceptance criteria 10 and 11.
+
+**Changed**
+- **More vocabulary per lesson (V-1, L-3):** 12–15 / 20–25 / 28–35 items for 5 / 10 / 15 minutes, instead of 6–8 / 10–14 / 15–20.
+- **V-5:** about two thirds of the items appear in the dialogue; the rest are extra scenario words, marked "Zusatz". Before, every item had to appear in the dialogue, which capped the list at what a short dialogue can hold.
+- **S-1:** AI suggestions are stored per level, and each shows a one-sentence description.
+- **G-4:** answers that match a listed solution are accepted without an AI call; other answers are judged by the AI.
+- Acceptance criterion 9: updated to the new vocabulary amounts.
+
+**Implemented in this version** (requirements unchanged): AI scenario suggestions (S-1), the grammar stage (§5.0, G-1 to G-8 except the dashboard part of G-8), choosing the grammar topic before a lesson (S-4a), and the grammar-lesson setting (U-8).
+
+Archived: [archive/REQUIREMENTS_v1.4.md](archive/REQUIREMENTS_v1.4.md)
+
+## v1.4, 2026-11-19
 
 **Name**
 - The app is called **parl.ai** ("speak first, learn later"). New **DS-0** for the name and wordmark; the spec title changed accordingly. The design reference was updated to the new wordmark.

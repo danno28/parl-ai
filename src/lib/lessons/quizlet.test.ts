@@ -9,6 +9,7 @@ const item = (termTarget: string, termNative: string, gender: VocabularyItem["ge
   gender,
   example: "",
   note: "",
+  inDialogue: true,
 });
 
 describe("toQuizletTsv", () => {

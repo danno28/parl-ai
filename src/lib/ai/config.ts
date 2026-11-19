@@ -18,7 +18,8 @@ export const TASK_SETTINGS: Record<AiTask, TaskSettings> = {
   scenariosFromVocabulary: { effort: "medium", maxTokens: 8000 },
   // Medium keeps generation near the ~20 s target (A-6); raise to "high" if quality needs it.
   generateLesson: { effort: "medium", maxTokens: 16000 },
-  generateGrammarLesson: { effort: "medium", maxTokens: 12000 },
+  // Low: at medium a grammar lesson took ~70 s; the content is short and well-defined.
+  generateGrammarLesson: { effort: "low", maxTokens: 8000 },
   evaluateGrammarExercise: { effort: "low", maxTokens: 2000 },
   evaluateReading: { effort: "low", maxTokens: 2000 },
   evaluateSpeaking: { effort: "low", maxTokens: 3000 },

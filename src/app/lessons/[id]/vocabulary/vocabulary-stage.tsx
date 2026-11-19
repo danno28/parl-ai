@@ -64,7 +64,9 @@ export function VocabularyStage({
           {t("stages.vocabulary")} · {t("lesson.vocabCount").replace("{count}", String(items.length))}
         </span>
       </div>
-      <p className="font-sans text-sm text-muted-foreground">{t("lesson.vocabHint")}</p>
+      <p className="font-sans text-sm text-muted-foreground">
+        {t("lesson.vocabHint")} {items.some((i) => !i.inDialogue) && t("lesson.extrasHint")}
+      </p>
 
       <div className="grid gap-x-[clamp(24px,6vw,80px)] sm:grid-cols-2">
         {items.map((item) => {
@@ -92,7 +94,14 @@ export function VocabularyStage({
                 </span>
                 <Volume2 className="ml-auto size-5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
               </span>
-              <span className="font-sans text-sm text-muted-foreground">{item.termNative}</span>
+              <span className="font-sans text-sm text-muted-foreground">
+                {item.termNative}
+                {!item.inDialogue && (
+                  <span className="ml-2 rounded-full border px-1.5 py-px text-[10px] tracking-wide text-faint uppercase">
+                    {t("lesson.extraWord")}
+                  </span>
+                )}
+              </span>
               {item.note && <span className="font-sans text-xs text-faint">{item.note}</span>}
             </button>
           );

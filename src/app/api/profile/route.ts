@@ -1,7 +1,9 @@
 import { z } from "zod";
+import { proposeGrammarFocus } from "@/lib/data/lessons";
 import { updateProfile } from "@/lib/data/user";
 import { requireSession } from "@/lib/session";
 import { CEFR_LEVELS } from "@/config/cefr";
+import { DEFAULT_LANGUAGE_PAIR } from "@/config/languages";
 import { LESSON_LENGTHS, type LessonMinutes } from "@/config/lesson-length";
 
 const Body = z.object({
@@ -10,9 +12,13 @@ const Body = z.object({
     .number()
     .refine((m): m is LessonMinutes => (LESSON_LENGTHS as readonly number[]).includes(m))
     .optional(),
+  grammarPreference: z.enum(["offer", "skip"]).optional(),
 });
 
-/** Level (U-3) and default lesson length (U-9). */
+/**
+ * Level (U-3), default lesson length (U-9) and grammar preference (U-8).
+ * After a level change it returns the new default grammar focus for the home page.
+ */
 export async function PATCH(request: Request) {
   const { session, unauthorized } = await requireSession();
   if (unauthorized) return unauthorized;
@@ -21,6 +27,10 @@ export async function PATCH(request: Request) {
   await updateProfile(session.user.id, {
     level: parsed.data.level,
     defaultLessonMinutes: parsed.data.defaultLessonMinutes as LessonMinutes | undefined,
+    grammarPreference: parsed.data.grammarPreference,
   });
-  return Response.json({ ok: true });
+  const grammarFocus = parsed.data.level
+    ? await proposeGrammarFocus(session.user.id, DEFAULT_LANGUAGE_PAIR, parsed.data.level)
+    : undefined;
+  return Response.json({ ok: true, grammarFocus });
 }

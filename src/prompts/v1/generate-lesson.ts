@@ -12,11 +12,11 @@ Grammar focus: {{grammarFocus}}
 Lesson length: {{minutes}} minutes
 
 Write the lesson with these amounts:
-- {{vocabMin}}–{{vocabMax}} vocabulary items
+- {{vocabMin}}–{{vocabMax}} vocabulary items: write at least {{vocabMin}}
 - {{turnsMin}}–{{turnsMax}} dialogue turns in total, of which {{userLinesMin}}–{{userLinesMax}} are the learner's lines
 
 Requirements:
-- Every vocabulary item appears in the dialogue, and the dialogue uses no important word that is missing from the list.
+- Vocabulary: about two thirds of the items appear in the dialogue (inDialogue: true), and the dialogue uses no important word that is missing from the list. The rest are extra words and phrases a learner would need in this scenario in real life but which the short dialogue doesn't use (inDialogue: false), e.g. other things you might order, ask about or hear. Order the list with the dialogue items first.
 - Nouns always include their article. Where the article does not show gender (l', les), set the gender field.
 - Prefer useful chunks and set phrases over isolated words, especially at A1–A2.
 - Use the grammar focus naturally in at least 2–3 of the learner's lines.

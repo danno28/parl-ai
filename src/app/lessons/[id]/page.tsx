@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/data/user";
-import { getLesson, STAGES, type Stage } from "@/lib/data/lessons";
+import { CORE_STAGES, getLesson, STAGES, type Stage } from "@/lib/data/lessons";
 import { cn } from "@/lib/utils";
 import { t } from "@/i18n";
 
@@ -25,8 +25,17 @@ async function Overview({ params }: { params: Promise<{ id: string }> }) {
   const lesson = await getLesson(id, user.id);
   if (!lesson) notFound();
 
+  const completed = lesson.status === "completed";
   const current = STAGES.indexOf(lesson.currentStage);
-  const done = (s: Stage) => lesson.status === "completed" || STAGES.indexOf(s) < current;
+  const done = (s: Stage) => completed || STAGES.indexOf(s) < current;
+  const grammarLabel =
+    lesson.grammarStatus === "done"
+      ? t("stages.done")
+      : lesson.grammarStatus === "skipped"
+        ? t("stages.skipped")
+        : lesson.currentStage === "grammar" && !completed
+          ? t("stages.current")
+          : t("stages.optional");
 
   return (
     <div className="grid gap-12">
@@ -46,26 +55,30 @@ async function Overview({ params }: { params: Promise<{ id: string }> }) {
         </p>
       </div>
 
-      {lesson.status === "completed" && (
-        <p className="font-sans text-sm text-muted-foreground">{t("lesson.completed")}</p>
-      )}
+      {completed && <p className="font-sans text-sm text-muted-foreground">{t("lesson.completed")}</p>}
 
       <ol className="border-t">
-        <li className="flex items-baseline justify-between border-b py-4 text-faint">
-          <span className="text-2xl">
-            0 · {t("stages.grammar")}
-            {lesson.grammarFocus && <span className="ml-3 font-sans text-sm">{lesson.grammarFocus}</span>}
-          </span>
-          <span className="font-sans text-xs">{t("stages.soon")}</span>
-        </li>
-        {STAGES.map((stage, i) => {
-          const isCurrent = lesson.status !== "completed" && stage === lesson.currentStage;
+        {lesson.grammarFocus ? (
+          <li className="border-b">
+            <Link href={`/lessons/${lesson.id}/grammar`} className="group flex items-baseline justify-between gap-4 py-4">
+              <span
+                className={cn(
+                  "text-2xl transition-transform duration-300 group-hover:translate-x-2.5",
+                  lesson.currentStage === "grammar" && !completed && "italic",
+                )}
+              >
+                0 · {t("stages.grammar")}
+                <span className="ml-3 font-sans text-sm text-muted-foreground not-italic">{lesson.grammarFocus}</span>
+              </span>
+              <span className="shrink-0 font-sans text-xs text-muted-foreground">{grammarLabel}</span>
+            </Link>
+          </li>
+        ) : null}
+        {CORE_STAGES.map((stage, i) => {
+          const isCurrent = !completed && stage === lesson.currentStage;
           return (
             <li key={stage} className="border-b">
-              <Link
-                href={`/lessons/${lesson.id}/${stage}`}
-                className="group flex items-baseline justify-between py-4"
-              >
+              <Link href={`/lessons/${lesson.id}/${stage}`} className="group flex items-baseline justify-between py-4">
                 <span
                   className={cn(
                     "text-2xl transition-transform duration-300 group-hover:translate-x-2.5",
@@ -88,12 +101,12 @@ async function Overview({ params }: { params: Promise<{ id: string }> }) {
       </ol>
 
       <Link
-        href={`/lessons/${lesson.id}/${lesson.status === "completed" ? "speaking" : lesson.currentStage}`}
+        href={`/lessons/${lesson.id}/${completed ? "speaking" : lesson.currentStage}`}
         className="justify-self-start rounded-full bg-foreground px-6 py-3 font-sans text-sm font-medium text-background transition-opacity hover:opacity-90"
       >
-        {lesson.status === "completed"
+        {completed
           ? t("lesson.review")
-          : current === 0 && lesson.currentTurn === 0
+          : current <= 1 && lesson.currentTurn === 0 && lesson.grammarStatus === "not_started"
             ? t("lesson.start")
             : t("lesson.continue")}
       </Link>

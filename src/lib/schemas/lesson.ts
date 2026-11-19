@@ -26,8 +26,11 @@ export const VocabularyItemSchema = z.object({
   gender: z
     .enum(["m", "f", "none"])
     .describe("Grammatical gender; set for nouns whose article hides it (l', les), else 'none'"),
-  example: z.string().describe("Example sentence in the target language, taken from the dialogue"),
+  example: z.string().describe("Example sentence in the target language (from the dialogue if the item appears there)"),
   note: z.string().describe("Short note (irregular plural, false friend …) or empty string"),
+  inDialogue: z
+    .boolean()
+    .describe("True if the item is used in the dialogue; false for an extra word that belongs to the scenario"),
 });
 
 export const DialogueTurnSchema = z.object({
@@ -64,7 +67,7 @@ export const GrammarExerciseSchema = z.object({
 });
 
 export const GrammarLessonSchema = z.object({
-  title: z.string(),
+  title: z.string().describe("Short name of the topic in the feedback language"),
   ruleExample: z.string().describe("One short model sentence in the target language showing the rule"),
   explanationNative: z.string().describe("2–4 sentences in the native language"),
   forms: z.array(
@@ -73,6 +76,13 @@ export const GrammarLessonSchema = z.object({
   pitfallsNative: z.array(z.string()).describe("Typical mistakes for speakers of the native language"),
   examples: z.array(z.object({ target: z.string(), native: z.string() })),
   exercises: z.array(GrammarExerciseSchema),
+});
+
+export const GrammarExerciseFeedbackSchema = z.object({
+  correct: z.boolean().describe("True if the answer is correct, including acceptable variants"),
+  feedbackNative: z
+    .string()
+    .describe("1–2 sentences in the feedback language: confirm, or explain the mistake and give the right form"),
 });
 
 export const PronunciationFeedbackSchema = z.object({
@@ -101,5 +111,6 @@ export type VocabularyItem = z.infer<typeof VocabularyItemSchema>;
 export type DialogueTurn = z.infer<typeof DialogueTurnSchema>;
 export type LessonContent = z.infer<typeof LessonContentSchema>;
 export type GrammarLesson = z.infer<typeof GrammarLessonSchema>;
+export type GrammarExerciseFeedback = z.infer<typeof GrammarExerciseFeedbackSchema>;
 export type PronunciationFeedback = z.infer<typeof PronunciationFeedbackSchema>;
 export type SpeakingFeedback = z.infer<typeof SpeakingFeedbackSchema>;

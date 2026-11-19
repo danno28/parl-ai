@@ -16,7 +16,14 @@ npm run dev                  # http://localhost:3000
 
 **Signing in locally:** open the app and enter an invited email. With `npm run dev` and `EMAIL_PROVIDER=console` (no email service), the page then shows a **Jetzt anmelden** button with the login link; the link is also printed in the server log. This shortcut never exists in a production build or once real emails are sent. Sessions last 60 days, so you rarely need to sign in again.
 
-**Using it:** pick a scenario (or type your own), the length and your level on the home page. Claude writes the lesson (about 30 seconds) and it is saved to your account. Each lesson has three working stages: vocabulary, reading aloud, and speaking from memory with hints. Your position and every score are saved, so you can resume at any time. Without a microphone or Azure key, you can type your answers instead. In development without a Claude key, the home page offers a hand-written sample lesson.
+**Using it:**
+- **Choose a scene:** pick one of the AI suggestions for your level ("Andere Vorschläge" for new ones) or type your own scene. Set the length, your level, whether to start with grammar, and optionally a different grammar topic.
+- **Lesson creation:** Claude writes the lesson (about 35 seconds) and it is saved to your account.
+- **Stages:** an optional grammar lesson with exercises, then vocabulary (with extra scenario words marked "Zusatz"), reading aloud, and speaking from memory with hints.
+- **Hands-free:** in reading and speaking, the microphone opens by itself when the partner has finished and closes when you pause. Turn this off with "Automatisch zuhören".
+- **Progress:** your position and every score are saved, so you can resume at any time. Unfinished lessons can be removed from the home page.
+- **Without a microphone or Azure key:** type your answers instead.
+- **Without a Claude key (development):** the home page offers a hand-written sample lesson.
 
 **What needs which key:**
 - Nothing extra: login, home page, and `/demo` with the browser's voice and a simulated score.
