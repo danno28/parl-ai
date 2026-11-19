@@ -26,6 +26,16 @@ export function getLLM(): LLMProvider {
   return instance;
 }
 
+/**
+ * Whether the active provider has credentials. For Claude: an API key or auth token in the
+ * environment. (An `ant auth login` profile also works but cannot be detected here.)
+ */
+export function isLLMConfigured(): boolean {
+  const name = process.env.LLM_PROVIDER ?? "claude";
+  if (name !== "claude") return true;
+  return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
+}
+
 /** Structured generation with one automatic retry on invalid or cut-off output (A-2). */
 export async function generateValidated<S extends z.ZodType>(
   req: GenerateObjectRequest<S>,

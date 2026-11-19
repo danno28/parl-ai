@@ -1,4 +1,7 @@
-import type { VocabularyItem } from "@/lib/schemas/lesson";
+import type { VocabularyItem as FullVocabularyItem } from "@/lib/schemas/lesson";
+
+/** Only the fields the exports need, so stored items and freshly generated ones both fit. */
+type VocabularyItem = Pick<FullVocabularyItem, "termTarget" | "termNative" | "gender" | "example">;
 
 /**
  * Quizlet-compatible export (V-6): two columns, target<TAB>native, no header, UTF-8.

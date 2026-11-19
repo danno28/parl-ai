@@ -16,7 +16,8 @@ type TaskSettings = { effort: Effort; maxTokens: number };
 export const TASK_SETTINGS: Record<AiTask, TaskSettings> = {
   suggestScenarios: { effort: "low", maxTokens: 4000 },
   scenariosFromVocabulary: { effort: "medium", maxTokens: 8000 },
-  generateLesson: { effort: "high", maxTokens: 16000 },
+  // Medium keeps generation near the ~20 s target (A-6); raise to "high" if quality needs it.
+  generateLesson: { effort: "medium", maxTokens: 16000 },
   generateGrammarLesson: { effort: "medium", maxTokens: 12000 },
   evaluateGrammarExercise: { effort: "low", maxTokens: 2000 },
   evaluateReading: { effort: "low", maxTokens: 2000 },

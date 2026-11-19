@@ -4,6 +4,7 @@ import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { drizzle as drizzlePostgres } from "drizzle-orm/postgres-js";
 import { PGlite } from "@electric-sql/pglite";
 import postgres from "postgres";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
 
 /**
@@ -11,7 +12,7 @@ import * as schema from "./schema";
  * - DATABASE_URL=postgres://…  → real PostgreSQL (production, T-6)
  * - unset or "pglite:<dir>"    → embedded PostgreSQL in ./.data/pglite for local development
  */
-function connect() {
+function connect(): Database {
   const url = process.env.DATABASE_URL ?? "pglite:./.data/pglite";
   if (url.startsWith("pglite:")) {
     const dir = url.slice("pglite:".length);
@@ -21,7 +22,8 @@ function connect() {
   return drizzlePostgres({ client: postgres(url), schema });
 }
 
-type Database = ReturnType<typeof connect>;
+/** Both drivers share Drizzle's PostgreSQL interface; typing to it keeps the query API uniform. */
+type Database = PgDatabase<PgQueryResultHKT, typeof schema>;
 const globalForDb = globalThis as unknown as { db?: Database };
 
 /** One connection per server process (survives hot reload in development). */
