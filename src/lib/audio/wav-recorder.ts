@@ -22,13 +22,27 @@ export class MicrophoneDeniedError extends Error {
   }
 }
 
+/**
+ * End-of-speech detection: once the learner has spoken, a pause of `silenceMs` ends the
+ * recording; if they never start, `noSpeechMs` gives up. Levels are RMS of the raw signal.
+ */
+export type VoiceActivityOptions = {
+  onSpeechEnd?: () => void;
+  onNoSpeech?: () => void;
+  silenceMs?: number;
+  noSpeechMs?: number;
+};
+
+const SPEECH_RMS = 0.03;
+const SILENCE_RMS = 0.012;
+
 export class WavRecorder {
   private context?: AudioContext;
   private stream?: MediaStream;
   private node?: AudioWorkletNode;
   private chunks: Float32Array[] = [];
 
-  async start(): Promise<void> {
+  async start(vad: VoiceActivityOptions = {}): Promise<void> {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
@@ -44,7 +58,37 @@ export class WavRecorder {
     const source = this.context.createMediaStreamSource(this.stream);
     this.node = new AudioWorkletNode(this.context, "capture");
     this.chunks = [];
-    this.node.port.onmessage = (e: MessageEvent<Float32Array>) => this.chunks.push(e.data);
+
+    const rate = this.context.sampleRate;
+    const silenceSamples = ((vad.silenceMs ?? 1500) / 1000) * rate;
+    const noSpeechSamples = ((vad.noSpeechMs ?? 8000) / 1000) * rate;
+    let heard = false;
+    let quiet = 0;
+    let total = 0;
+    let fired = false;
+    const fire = (callback?: () => void) => {
+      if (fired || !callback) return;
+      fired = true;
+      callback();
+    };
+
+    this.node.port.onmessage = (e: MessageEvent<Float32Array>) => {
+      const frame = e.data;
+      this.chunks.push(frame);
+      if (!vad.onSpeechEnd && !vad.onNoSpeech) return;
+      let sum = 0;
+      for (let i = 0; i < frame.length; i++) sum += frame[i] * frame[i];
+      const rms = Math.sqrt(sum / frame.length);
+      total += frame.length;
+      if (rms > SPEECH_RMS) {
+        heard = true;
+        quiet = 0;
+      } else if (rms < SILENCE_RMS) {
+        quiet += frame.length;
+      }
+      if (heard && quiet >= silenceSamples) fire(vad.onSpeechEnd);
+      if (!heard && total >= noSpeechSamples) fire(vad.onNoSpeech);
+    };
     source.connect(this.node);
   }
 

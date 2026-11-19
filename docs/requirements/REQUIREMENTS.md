@@ -1,4 +1,4 @@
-# parl.ai: Requirements v1.4
+# parl.ai: Requirements v1.5
 
 *Speak first, learn later.* A French learning app (working title until v1.3: "French Learning App").
 
@@ -69,7 +69,7 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 | | 5 min | 10 min | 15 min |
 |---|---|---|---|
 | Grammar (Stage 0, if taken) | 1 rule, 2 exercises | 1 rule, 3–4 exercises | 1 rule, 5–6 exercises |
-| Vocabulary (Stage 1) | 6–8 items | 10–14 items | 15–20 items |
+| Vocabulary (Stage 1) | 12–15 items | 20–25 items | 28–35 items |
 | Dialogue turns (Stages 2 and 3) | 4–6 (2–3 user lines) | 8–10 (4–5 user lines) | 12–16 (6–8 user lines) |
 | Free conversation (Stage 4) | about 3 exchanges | about 6 exchanges | about 10 exchanges |
 
@@ -86,7 +86,7 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 
 | ID | Requirement |
 |---|---|
-| S-1 | **Suggested scenarios:** the app suggests 6–8 scenarios that fit the user's level. They are grouped by everyday category (shopping, health, travel, work, social, admin) and exclude scenarios the user has already completed. A "Show me others" button generates a new set. |
+| S-1 | **Suggested scenarios:** the app suggests 6–8 scenarios that fit the user's level. They are grouped by everyday category (shopping, health, travel, work, social, admin) and exclude scenarios the user has already completed. A "Show me others" button generates a new set. The last set is stored on the profile per level, so the home page shows it without another AI call; a level change brings a new set. Each suggestion shows the title in both languages and a one-sentence description. |
 | S-2 | **Custom scenario:** the user types a free-text scenario. The AI normalizes it into a title and a short description, and asks for clarification only if it is unusable. |
 | S-3 | **From a vocabulary list:** the user uploads or pastes a list in Quizlet export format (see §5.1.3). The AI proposes 1–3 scenarios that use as many of the words as possible, and shows which words each scenario covers. Words that fit no scenario are listed separately. The user picks one scenario. |
 | S-4 | Before generating, the user can choose **their role** in the dialogue (e.g. customer or baker), plus **register** (formal *vous* / informal *tu*). By default, the AI picks what is natural for the scenario. |
@@ -110,7 +110,7 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 |  | • forms in a compact table where useful (e.g. conjugations, articles) |
 |  | • 3–5 example sentences taken from or matching the scenario, with translations and audio (TTS) |
 |  | • typical mistakes, especially for German speakers (e.g. *ich habe Hunger* → *j'ai faim*, not *je suis faim*) |
-|  | • 3–6 short practice exercises (fill in the blank, transform the sentence, translate), typed or spoken, with AI feedback on each answer |
+|  | • 3–6 short practice exercises (fill in the blank, transform the sentence, translate), typed or spoken, with AI feedback on each answer. An answer that matches one of the listed correct answers is accepted at once; any other answer is judged by the AI, so valid alternatives count and mistakes get an explanation. |
 | G-5 | **Link to the scenario:** the dialogue uses the grammar focus in at least 2–3 of the user's lines. In Stage 3, the feedback specifically comments on whether the grammar focus was used correctly. |
 | G-6 | **Reference grammar list per level:** for each target language, a stored list of the grammar topics typical for each CEFR level (A1–C2). It is data, not code, and is passed to the AI as guidance. The AI still writes all lesson content and judges all answers (A-1). |
 | G-7 | The grammar lesson content is generated **only when the user opens it**, so a skipped lesson costs nothing. Once generated, it is stored with the lesson. |
@@ -120,11 +120,11 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 
 | ID | Requirement |
 |---|---|
-| V-1 | The app shows the scenario's vocabulary list. The number of items depends on the lesson length (L-3): **6–8 items for 5 minutes, 10–14 for 10, and 15–20 for 15.** |
+| V-1 | The app shows the scenario's vocabulary list. The number of items depends on the lesson length (L-3): **12–15 items for 5 minutes, 20–25 for 10, and 28–35 for 15.** |
 | V-2 | Each item has: French term, German translation, part of speech, and an example sentence (in French, from the dialogue). Optional fields: a short note (irregular plural, false friend, etc.) and an audio button (TTS). |
 | V-3 | **French nouns always include the article** ("la baguette", "le pain", "l'addition (f)"). Where the article does not show the gender (l', les), the gender is added. |
 | V-4 | Vocabulary may include short phrases and chunks ("je voudrais…", "ça fait combien ?"), not just single words. At A1–A2, chunks are preferred. |
-| V-5 | **Every vocabulary item appears in the Stage 2 dialogue**, and the dialogue uses no important words that are missing from the list. |
+| V-5 | **About two thirds of the vocabulary items appear in the Stage 2 dialogue**, and the dialogue uses no important words that are missing from the list. The rest are **extra words** a learner needs in this scenario in real life but that the short dialogue doesn't use. They are marked "Zusatz" in the list and listed after the dialogue words. |
 | V-6 | **Download** buttons: |
 |  | • **Quizlet (TSV):** 2 columns, `French<TAB>German`, no header row, UTF-8. This can be pasted straight into Quizlet's import. |
 |  | • **CSV:** French, German, example sentence (for Excel/Anki). |
@@ -152,6 +152,7 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 | R-5 | The user can retry any line as often as they like, or move on regardless of the score. The best and the latest attempt are saved. |
 | R-6 | At the end, a **summary** shows the score per line, the average, and the 3 most common issues. |
 | R-7 | A text-input fallback is available if the microphone is unavailable. In that case, only spelling is checked. |
+| R-8 | **Hands-free flow (Stages 2 and 3):** once the partner has finished speaking, the microphone turns on by itself. A recording ends by itself after about 1.5 seconds of silence once the learner has spoken (or when tapped, or after 30 s). If nothing is said for 8 seconds, the microphone turns off without an error. The setting "Automatisch zuhören" (on by default) can be turned off and is remembered in the browser. It only applies after the first tap on the page, because browsers don't allow sound or microphone before a user action. |
 
 > **Technical note: how pronunciation feedback works.** Claude cannot listen to audio directly. Pronunciation feedback is built from two parts:
 > 1. a **speech service** that turns the recording into text and, ideally, gives per-word and per-sound pronunciation scores
@@ -213,6 +214,7 @@ Choose scenario ──► Stage 0: Grammar (optional) ──► Stage 1: Vocabul
 | P-4 | Lesson history: the user can reopen any past lesson, re-download its vocabulary, and repeat any stage. |
 | P-5 | **Audio recordings are never stored**, only transcripts and scores. |
 | P-6 | Every scored event is stored as a raw, timestamped **learning event**, so points and rewards can later be calculated from history after the fact (see §9). |
+| P-7 | The learner can **remove an unfinished lesson** from the home page. An inline confirmation asks first; removing deletes the lesson with its dialogue, vocabulary, attempts and events. |
 
 ---
 
@@ -295,7 +297,9 @@ Each of these needs v1 to make the listed design choices, even though the featur
 6. Switching the LLM to another provider requires only a new provider implementation and a configuration change. No prompt or UI code changes.
 7. Before a scenario, I'm offered a grammar lesson on a topic typical for my level and relevant to the scenario. I can skip it with one click, or change the topic. The next lesson goes back to a level-typical topic. The dialogue uses the grammar focus, and Stage 3 feedback comments on it.
 8. The app matches the approved visual reference (§8.1). Changing values in the token file (e.g. accent color or font) changes every screen, with no edits to components.
-9. I can choose 5, 10 or 15 minutes for a lesson. A 5-minute A2 lesson has about 6–8 words and 2–3 lines for me to speak; a 15-minute one has about 15–20 words and 6–8 lines.
+9. I can choose 5, 10 or 15 minutes for a lesson. A 5-minute A2 lesson has about 12–15 words and 2–3 lines for me to speak; a 15-minute one has about 28–35 words and 6–8 lines.
+10. After the partner speaks, the microphone opens by itself and closes when I pause, so I can do a whole dialogue without tapping (when "Automatisch zuhören" is on).
+11. I can remove an unfinished lesson from the home page after confirming.
 
 ---
 

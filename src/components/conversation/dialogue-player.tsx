@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GraphiteSpeaker, type SpeakerMode } from "./graphite-speaker";
@@ -30,6 +30,35 @@ type SpeakingResult = {
 type Result = ReadingResult | SpeakingResult;
 
 const HINT_PENALTY = 10;
+
+/* R-8 setting "Automatisch zuhören": remembered per browser, on by default. */
+const AUTO_LISTEN_KEY = "autoListen";
+const autoListenListeners = new Set<() => void>();
+let autoListenMemory: boolean | null = null; // used when storage is blocked
+
+function readAutoListen(): boolean {
+  if (autoListenMemory !== null) return autoListenMemory;
+  try {
+    return localStorage.getItem(AUTO_LISTEN_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function writeAutoListen(on: boolean) {
+  try {
+    localStorage.setItem(AUTO_LISTEN_KEY, on ? "on" : "off");
+    autoListenMemory = null;
+  } catch {
+    autoListenMemory = on;
+  }
+  autoListenListeners.forEach((listener) => listener());
+}
+
+function subscribeAutoListen(listener: () => void) {
+  autoListenListeners.add(listener);
+  return () => autoListenListeners.delete(listener);
+}
 
 const normalizeWord = (w: string) =>
   w.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z']/g, "");
@@ -75,8 +104,27 @@ export function DialoguePlayer({
   const [speaker, setSpeaker] = useState<SpeakerMode>("idle");
   const [error, setError] = useState<string | null>(null);
   const interacted = useRef(false);
+  const autoListen = useSyncExternalStore(subscribeAutoListen, readAutoListen, () => true);
 
   const recorder = useRecorder((wav) => void submit({ audio: wav }));
+
+  // Latest values for callbacks that fire later (end of the partner's audio).
+  const live = useRef({ phase, typing, autoListen });
+  useEffect(() => {
+    live.current = { phase, typing, autoListen };
+  }, [phase, typing, autoListen]);
+
+  /** R-8: start listening by itself once the partner has finished speaking. */
+  function maybeListen() {
+    const s = live.current;
+    if (speechConfigured && s.autoListen && !s.typing && s.phase === "ready" && interacted.current) {
+      void recorder.start();
+    }
+  }
+
+  function toggleAutoListen() {
+    writeAutoListen(!autoListen);
+  }
 
   // Partner lines before the current learner line (or after the last one, on the summary).
   const partnerTurns = useMemo(() => {
@@ -95,13 +143,23 @@ export function DialoguePlayer({
     void speak(
       partnerLine,
       { rate, useServer: speechConfigured },
-      { onStart: () => setSpeaker("speak"), onEnd: () => setSpeaker("idle") },
+      {
+        onStart: () => setSpeaker("speak"),
+        onEnd: () => {
+          setSpeaker("idle");
+          maybeListen();
+        },
+      },
     );
   }
 
-  // After the first interaction, the partner speaks automatically at each new line.
+  // After the first interaction, the partner speaks automatically at each new line,
+  // and the microphone opens when it's the learner's turn.
   useEffect(() => {
-    if (interacted.current) playPartner();
+    if (interacted.current) {
+      if (partnerLine) playPartner();
+      else maybeListen();
+    }
     return () => stopSpeaking();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
@@ -359,13 +417,28 @@ export function DialoguePlayer({
               </>
             )}
             {speechConfigured && (
-              <button
-                type="button"
-                onClick={() => setTyping((v) => !v)}
-                className="font-sans text-xs text-muted-foreground underline-offset-4 hover:underline"
-              >
-                {typing ? t("lesson.speakInstead") : t("lesson.typeInstead")}
-              </button>
+              <div className="flex flex-wrap justify-center gap-x-5 gap-y-1 font-sans text-xs text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (recorder.recording) recorder.cancel();
+                    setTyping((v) => !v);
+                  }}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {typing ? t("lesson.speakInstead") : t("lesson.typeInstead")}
+                </button>
+                {!typing && (
+                  <button
+                    type="button"
+                    onClick={toggleAutoListen}
+                    aria-pressed={autoListen}
+                    className="underline-offset-4 hover:underline"
+                  >
+                    {autoListen ? t("lesson.autoListenOn") : t("lesson.autoListenOff")}
+                  </button>
+                )}
+              </div>
             )}
             {!speechConfigured && <p className="font-sans text-xs text-muted-foreground">{t("lesson.speechMissing")}</p>}
           </div>

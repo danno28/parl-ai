@@ -61,6 +61,10 @@ export const users = pgTable("users", {
   grammarPreference: grammarPreference("grammar_preference").notNull().default("offer"),
   defaultLessonMinutes: integer("default_lesson_minutes").notNull().default(10),
   theme: themePreference("theme").notNull().default("light"),
+  /** Last AI scenario suggestions (S-1), kept so the home page doesn't call the AI on every visit. */
+  scenarioSuggestions: jsonb("scenario_suggestions"),
+  /** Level the stored suggestions were made for; a level change triggers new ones. */
+  suggestionsLevel: text("suggestions_level"),
   createdAt: createdAt(),
 });
 
@@ -196,6 +200,8 @@ export const vocabularyItems = pgTable(
     gender: text("gender"),
     example: text("example"),
     note: text("note"),
+    /** False for extra scenario words that don't appear in the dialogue (V-5). */
+    inDialogue: boolean("in_dialogue").notNull().default(true),
     // Reserved for spaced repetition / in-app flashcards (later version, §9).
     srsEase: real("srs_ease"),
     srsIntervalDays: integer("srs_interval_days"),

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db, schema } from "@/db";
 import { AiRefusalError, isLLMConfigured } from "@/lib/ai";
 import { modelFor } from "@/lib/ai/config";
-import { chooseGrammarFocus, saveLesson } from "@/lib/data/lessons";
+import { ensureGrammarTopic, proposeGrammarFocus, saveLesson } from "@/lib/data/lessons";
 import { generateLesson } from "@/lib/lessons/generate";
 import { SAMPLE_LESSON } from "@/lib/lessons/sample-lesson";
 import { PROMPT_VERSION } from "@/prompts/render";
@@ -15,6 +15,8 @@ const Body = z.object({
   scenario: z.string().trim().min(2).max(200),
   source: z.enum(["suggested", "custom"]),
   minutes: z.number().refine((m): m is LessonMinutes => (LESSON_LENGTHS as readonly number[]).includes(m)),
+  /** Grammar focus chosen by the learner for this lesson only (S-4a, G-2, G-3). */
+  grammarFocus: z.string().trim().min(2).max(200).optional(),
   /** Development only: store the hand-written sample lesson instead of calling the AI. */
   sample: z.boolean().optional(),
 });
@@ -36,13 +38,19 @@ export async function POST(request: Request) {
 
   if (sample) {
     if (process.env.NODE_ENV !== "development") return Response.json({ error: "NOT_FOUND" }, { status: 404 });
+    const topic = await ensureGrammarTopic(
+      languages,
+      "A2",
+      "Partitive articles (du, de la, de l', des) and de after quantities and negation",
+    );
     const id = await saveLesson({
       userId: user.id,
       languages,
       level: "A2",
       minutes: 5,
       scenarioSource: "suggested",
-      grammarTopicId: null,
+      grammarTopicId: topic.id,
+      grammarPreference: user.grammarPreference,
       content: SAMPLE_LESSON,
       promptVersion: "sample",
       modelId: "sample",
@@ -53,7 +61,9 @@ export async function POST(request: Request) {
   if (!isLLMConfigured()) return Response.json({ error: "LLM_NOT_CONFIGURED" }, { status: 503 });
 
   try {
-    const grammar = await chooseGrammarFocus(user.id, languages, level);
+    const proposed = await proposeGrammarFocus(user.id, languages, level);
+    const chosen = parsed.data.grammarFocus ?? proposed;
+    const grammar = await ensureGrammarTopic(languages, level, chosen);
     const content = await generateLesson({ languages, level, minutes, scenario, grammarFocus: grammar.title });
     if (!content.dialogue.some((t) => t.speaker === "user")) {
       return Response.json({ error: "GENERATION_FAILED" }, { status: 502 });
@@ -65,6 +75,8 @@ export async function POST(request: Request) {
       minutes,
       scenarioSource: source,
       grammarTopicId: grammar.id,
+      grammarOverridden: chosen !== proposed,
+      grammarPreference: user.grammarPreference,
       content,
       promptVersion: PROMPT_VERSION,
       modelId: modelFor("generateLesson"),

@@ -1,14 +1,16 @@
 import "server-only";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "@/db";
-import type { LessonContent } from "@/lib/schemas/lesson";
+import type { GrammarLesson, LessonContent } from "@/lib/schemas/lesson";
 import type { CefrLevel } from "@/config/cefr";
 import type { LessonMinutes } from "@/config/lesson-length";
 import { DEFAULT_LANGUAGE_PAIR, TARGET_LANGUAGES, type LanguagePair } from "@/config/languages";
 
-/** Stages that exist so far, in order. Grammar (Stage 0) and conversation (Stage 4) come later. */
-export const STAGES = ["vocabulary", "reading", "speaking"] as const;
+/** Stages that exist so far, in order. Grammar (Stage 0) is optional; conversation (Stage 4) comes later. */
+export const STAGES = ["grammar", "vocabulary", "reading", "speaking"] as const;
 export type Stage = (typeof STAGES)[number];
+/** The stages every lesson goes through (grammar can be skipped). */
+export const CORE_STAGES = ["vocabulary", "reading", "speaking"] as const;
 
 export type LessonTurn = {
   id: string;
@@ -28,6 +30,7 @@ export type LessonVocab = {
   gender: "m" | "f" | "none";
   example: string;
   note: string;
+  inDialogue: boolean;
 };
 
 export type LessonDetail = {
@@ -40,6 +43,9 @@ export type LessonDetail = {
   partnerRole: string;
   userRole: string;
   grammarFocus: string | null;
+  grammarStatus: "not_started" | "skipped" | "done";
+  /** Generated when the grammar lesson is first opened (G-7); null until then. */
+  grammarContent: GrammarLesson | null;
   status: "in_progress" | "completed";
   currentStage: Stage;
   currentTurn: number;
@@ -62,12 +68,15 @@ export type LessonSummary = {
 
 const asStage = (s: string): Stage => ((STAGES as readonly string[]).includes(s) ? (s as Stage) : "vocabulary");
 
-/** Picks a grammar topic typical for the level that the learner has not had yet (G-2, G-3). */
-export async function chooseGrammarFocus(
+/**
+ * The default grammar focus for the next lesson: the first topic typical for the level that
+ * the learner hasn't had yet (G-2, G-3). Read-only; the topic is stored when a lesson uses it.
+ */
+export async function proposeGrammarFocus(
   userId: string,
   languages: LanguagePair,
   level: CefrLevel,
-): Promise<{ id: string; title: string }> {
+): Promise<string> {
   const reference = TARGET_LANGUAGES[languages.target].grammarReference[level];
   const used = await db
     .select({ title: schema.grammarTopics.title })
@@ -75,11 +84,25 @@ export async function chooseGrammarFocus(
     .innerJoin(schema.grammarTopics, eq(schema.lessons.grammarTopicId, schema.grammarTopics.id))
     .where(eq(schema.lessons.userId, userId));
   const usedTitles = new Set(used.map((u) => u.title));
-  const title = reference.find((t) => !usedTitles.has(t)) ?? reference[usedTitles.size % reference.length];
+  return reference.find((t) => !usedTitles.has(t)) ?? reference[usedTitles.size % reference.length];
+}
 
+/** Stores (or finds) a grammar topic. Topics from the reference lists are "reference", typed ones "custom". */
+export async function ensureGrammarTopic(
+  languages: LanguagePair,
+  level: CefrLevel,
+  title: string,
+): Promise<{ id: string; title: string }> {
+  const lists = TARGET_LANGUAGES[languages.target].grammarReference;
+  const referenceLevel = (Object.keys(lists) as CefrLevel[]).find((l) => lists[l].includes(title));
   const [topic] = await db
     .insert(schema.grammarTopics)
-    .values({ targetLanguage: languages.target, cefrLevel: level, title, source: "reference" })
+    .values({
+      targetLanguage: languages.target,
+      cefrLevel: referenceLevel ?? level,
+      title,
+      source: referenceLevel ? "reference" : "custom",
+    })
     .onConflictDoUpdate({
       target: [schema.grammarTopics.targetLanguage, schema.grammarTopics.cefrLevel, schema.grammarTopics.title],
       set: { title },
@@ -96,10 +119,14 @@ export async function saveLesson(input: {
   minutes: LessonMinutes;
   scenarioSource: "suggested" | "custom";
   grammarTopicId: string | null;
+  grammarOverridden?: boolean;
+  /** U-8: start with the grammar lesson ("offer") or go straight to vocabulary ("skip"). */
+  grammarPreference?: "offer" | "skip";
   content: LessonContent;
   promptVersion: string;
   modelId: string;
 }): Promise<string> {
+  const startWithGrammar = input.grammarTopicId !== null && input.grammarPreference !== "skip";
   const { content } = input;
   return db.transaction(async (tx) => {
     const [scenario] = await tx
@@ -128,10 +155,12 @@ export async function saveLesson(input: {
         partnerName: content.partnerName,
         partnerRole: content.partnerRole,
         grammarTopicId: input.grammarTopicId,
+        grammarOverridden: input.grammarOverridden ?? false,
+        grammarStatus: input.grammarPreference === "skip" ? "skipped" : "not_started",
         content,
         promptVersion: input.promptVersion,
         modelId: input.modelId,
-        currentStage: "vocabulary",
+        currentStage: startWithGrammar ? "grammar" : "vocabulary",
       })
       .returning({ id: schema.lessons.id });
 
@@ -147,6 +176,7 @@ export async function saveLesson(input: {
           gender: v.gender,
           example: v.example,
           note: v.note,
+          inDialogue: v.inDialogue,
         })),
       );
     }
@@ -238,6 +268,8 @@ export async function getLesson(lessonId: string, userId: string): Promise<Lesso
     partnerRole: l.partnerRole ?? "",
     userRole: l.userRole ?? "",
     grammarFocus: row.grammarFocus,
+    grammarStatus: l.grammarStatus,
+    grammarContent: (l.grammarContent as GrammarLesson | null) ?? null,
     status: l.status,
     currentStage: asStage(l.currentStage),
     currentTurn: l.currentTurn,
@@ -258,9 +290,89 @@ export async function getLesson(lessonId: string, userId: string): Promise<Lesso
       gender: (v.gender as LessonVocab["gender"]) ?? "none",
       example: v.example ?? "",
       note: v.note ?? "",
+      inDialogue: v.inDialogue,
     })),
     bestScores,
   };
+}
+
+/** Stores the generated grammar lesson (G-7: generated on first opening, then reused). */
+export async function saveGrammarContent(lessonId: string, userId: string, content: GrammarLesson): Promise<void> {
+  await db
+    .update(schema.lessons)
+    .set({ grammarContent: content })
+    .where(and(eq(schema.lessons.id, lessonId), eq(schema.lessons.userId, userId)));
+}
+
+/**
+ * Ends Stage 0 (G-1): "done" after the exercises, or "skipped". Moves the lesson on to
+ * vocabulary if it was still waiting at the grammar stage.
+ */
+export async function finishGrammar(
+  lessonId: string,
+  userId: string,
+  status: "done" | "skipped",
+): Promise<void> {
+  const [lesson] = await db
+    .select({ currentStage: schema.lessons.currentStage })
+    .from(schema.lessons)
+    .where(and(eq(schema.lessons.id, lessonId), eq(schema.lessons.userId, userId)))
+    .limit(1);
+  if (!lesson) return;
+  await db
+    .update(schema.lessons)
+    .set({
+      grammarStatus: status,
+      ...(lesson.currentStage === "grammar" ? { currentStage: "vocabulary" as const, currentTurn: 0 } : {}),
+    })
+    .where(eq(schema.lessons.id, lessonId));
+  await logEvent(userId, lessonId, status === "done" ? "stage_completed" : "grammar_skipped", { stage: "grammar" });
+}
+
+export async function saveGrammarAttempt(input: {
+  userId: string;
+  lessonId: string;
+  exerciseIndex: number;
+  answer: string;
+  correct: boolean;
+  feedback: unknown;
+}): Promise<void> {
+  await db.insert(schema.attempts).values({
+    userId: input.userId,
+    lessonId: input.lessonId,
+    stage: "grammar",
+    exerciseIndex: input.exerciseIndex,
+    transcript: input.answer,
+    scores: { overall: input.correct ? 100 : 0, correct: input.correct },
+    feedback: input.feedback,
+  });
+  await logEvent(input.userId, input.lessonId, "attempt", {
+    stage: "grammar",
+    exerciseIndex: input.exerciseIndex,
+    correct: input.correct,
+  });
+}
+
+/**
+ * Permanently removes one of the learner's lessons with its dialogue, vocabulary, attempts and
+ * events. The scenario row goes too unless another lesson uses it.
+ */
+export async function deleteLesson(lessonId: string, userId: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(lessonId)) return false;
+  return db.transaction(async (tx) => {
+    const [deleted] = await tx
+      .delete(schema.lessons)
+      .where(and(eq(schema.lessons.id, lessonId), eq(schema.lessons.userId, userId)))
+      .returning({ scenarioId: schema.lessons.scenarioId });
+    if (!deleted) return false;
+    const stillUsed = await tx
+      .select({ id: schema.lessons.id })
+      .from(schema.lessons)
+      .where(eq(schema.lessons.scenarioId, deleted.scenarioId))
+      .limit(1);
+    if (!stillUsed.length) await tx.delete(schema.scenarios).where(eq(schema.scenarios.id, deleted.scenarioId));
+    return true;
+  });
 }
 
 /** Saves where the learner is (P-1, P-2). Moving past the last stage completes the lesson. */

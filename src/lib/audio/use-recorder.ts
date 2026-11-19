@@ -8,8 +8,9 @@ const MAX_SECONDS = 30;
 export type RecorderError = "mic_denied" | "too_short" | "failed";
 
 /**
- * Microphone recording for one line at a time: start, stop (or auto-stop after 30 s),
- * and hand the WAV to `onRecorded`.
+ * Microphone recording for one line at a time. Recording ends when the learner taps stop,
+ * pauses for 1.5 s after speaking (R-8), or hits 30 s; then the WAV goes to `onRecorded`.
+ * If nothing is said for 8 s, the recording is dropped quietly.
  */
 export function useRecorder(onRecorded: (wav: Blob) => void) {
   const [recording, setRecording] = useState(false);
@@ -30,16 +31,25 @@ export function useRecorder(onRecorded: (wav: Blob) => void) {
     [],
   );
 
+  function cancel() {
+    clearTimeout(timer.current);
+    recorder.current?.cancel();
+    recorder.current = null;
+    setRecording(false);
+  }
+
   async function start() {
+    if (recorder.current) return;
     setError(null);
     const r = new WavRecorder();
+    recorder.current = r;
     try {
-      await r.start();
+      await r.start({ onSpeechEnd: () => void stop(), onNoSpeech: cancel });
     } catch (e) {
+      recorder.current = null;
       setError(e instanceof MicrophoneDeniedError ? "mic_denied" : "failed");
       return;
     }
-    recorder.current = r;
     setRecording(true);
     timer.current = setTimeout(() => void stop(), MAX_SECONDS * 1000);
   }
@@ -58,5 +68,5 @@ export function useRecorder(onRecorded: (wav: Blob) => void) {
     callback.current(wav);
   }
 
-  return { recording, error, setError, start, stop };
+  return { recording, error, setError, start, stop, cancel };
 }
